@@ -16,7 +16,7 @@ services:
 
   backend:
     build:
-      context: ../../backend/backend/
+      context: ../../backend/java/
       dockerfile: backend.Dockerfile
     image: activitydetectorbackend
     container_name: ac_backend
