@@ -57,7 +57,7 @@ public class VideoService {
         saveVideoDatabaseRecord(videoName, null, videoPath);
     }
 
-    public void saveVideoDatabaseRecord(String videoName, Path videoPath, VideoDetails detailsJson){
+    public void saveVideoDatabaseRecord(String videoName, Path videoPath, VideoDetails.Details detailsJson){
         saveVideoDatabaseRecord(videoName, null, videoPath, detailsJson);
     }
 
@@ -65,7 +65,7 @@ public class VideoService {
         saveVideoDatabaseRecord(videoName, description, videoPath, null);
     }
 
-    public void saveVideoDatabaseRecord(String videoName, String description, Path videoPath, VideoDetails details){
+    public void saveVideoDatabaseRecord(String videoName, String description, Path videoPath, VideoDetails.Details details){
         String videoPathString = videoPath.toString();
         Video video = Video.builder().name(videoName).description(description).pathToFile(videoPathString).build();
         if(videoRepository.existsVideoByPathToFile(videoPathString)){
@@ -73,8 +73,8 @@ public class VideoService {
         }
         video = videoRepository.save(video);
         if(details!=null){
-            details.setVideo(video);
-            videoDetailsRepository.save(details);
+            VideoDetails vd = new VideoDetails(video, details);
+            videoDetailsRepository.save(vd);
         }
 
         logger.debug("Record saved to database: {}", video);

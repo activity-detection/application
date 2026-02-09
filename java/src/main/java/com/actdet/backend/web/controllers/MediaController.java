@@ -53,7 +53,7 @@ public class MediaController {
                                          @RequestParam("video-name") String videoName,
                                          @RequestParam(value = "description", required = false) String description,
                                          @RequestParam("relative-path") String pathToSaveIn,
-                                         @RequestPart(value = "details", required = true) VideoDetails detailsJson){
+                                         @RequestPart(value = "details", required = true) VideoDetails.Details detailsJson){
         if(!Video.hasSupportedExtension(Objects.requireNonNull(file.getOriginalFilename()))) return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
 
         videoStorageService.store(file, videoName, description, Paths.get(pathToSaveIn), detailsJson);

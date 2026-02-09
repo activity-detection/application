@@ -54,7 +54,7 @@ public class VideoStorageService {
     }
 
     @Transactional
-    public void store(MultipartFile file, String videoName, String description, Path filePathToSaveIn, VideoDetails details){
+    public void store(MultipartFile file, String videoName, String description, Path filePathToSaveIn, VideoDetails.Details details){
         if(file.isEmpty()){
             throw new FileSavingException("Cannot save empty file");
         }
