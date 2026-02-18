@@ -105,5 +105,8 @@ public class VideoStorageService {
 
     }
 
+    public VideoDetails.Details getVideoDetails(String videoId){
+        return videoService.getVideoDetails(videoId);
+    }
 
 }

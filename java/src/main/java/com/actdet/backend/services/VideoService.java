@@ -107,5 +107,9 @@ public class VideoService {
     public Path getVideoFolderPath(){return this.videoFolderPath;}
     public int getMaxDepth(){return this.maxDepth;}
 
+    public VideoDetails.Details getVideoDetails(String videoId){
+        VideoDetails details = videoDetailsRepository.findById(UUID.fromString(videoId)).orElseThrow(() -> new RecordNotFoundException("Specified video does not exist"));
+        return details.getDetails();
+    }
 
 }

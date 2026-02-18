@@ -5,6 +5,7 @@ import com.actdet.backend.data.entities.VideoDetails;
 import com.actdet.backend.data.repositories.VideoRepository;
 import com.actdet.backend.services.VideoStorageService;
 import com.actdet.backend.web.controllers.bodies.ResponseVideoBody;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.support.ResourceRegion;
 import org.springframework.http.*;
@@ -41,6 +42,11 @@ public class MediaController {
                 .body(resource);
     }
 
+    @GetMapping("/{fileIdentifier}/info")
+    public ResponseEntity<?> getVideoInfo(@PathVariable("fileIdentifier") String fileIdentifier){
+        return ResponseEntity.ok(videoStorageService.getVideoDetails(fileIdentifier));
+    }
+
 
     //Tymczasowy endpoint do podgladu jakie pliki sie zapisaly
     @GetMapping("")
@@ -53,7 +59,7 @@ public class MediaController {
                                          @RequestParam("video-name") String videoName,
                                          @RequestParam(value = "description", required = false) String description,
                                          @RequestParam("relative-path") String pathToSaveIn,
-                                         @RequestPart(value = "details", required = true) VideoDetails.Details detailsJson){
+                                         @RequestPart(value = "details") @Valid VideoDetails.Details detailsJson){
         if(!Video.hasSupportedExtension(Objects.requireNonNull(file.getOriginalFilename()))) return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
 
         videoStorageService.store(file, videoName, description, Paths.get(pathToSaveIn), detailsJson);

@@ -2,10 +2,15 @@ package com.actdet.backend.data.entities;
 
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
+import io.hypersistence.utils.hibernate.type.json.JsonType;
 import jakarta.persistence.*;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Type;
@@ -29,9 +34,10 @@ public class VideoDetails {
     @MapsId
     private Video video;
 
-    @Type(JsonBinaryType.class)
+    @Type(JsonType.class)
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "details_json", columnDefinition = "jsonb")
+    @Getter
     private Details details;
 
 
@@ -39,21 +45,41 @@ public class VideoDetails {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class Details{
+        @JsonProperty("events")
+        @Valid
+        List<EventDetection> eventDetections;
         @JsonProperty("detections")
-        List<Detection> detections;
+        @Valid
+        List<ObjectDetections> detectedObjects;
 
         @Data
         @NoArgsConstructor
         @AllArgsConstructor
-        static class Detection{
+        static class EventDetection{
             @JsonProperty("label")
-            String detectionLabel;
+            @NotBlank
+            String eventLabel;
             @JsonProperty("timestamp")
+            @Valid
+            DetectionTimestamp detectionTimestamp;
+        }
+        //Musze ustawic ograniczenie zeby nie dalo sie podac wartosci czasowej poza granicami trwania filmu (zeby timestamp nie mogl byc np. dluzszy niz sam film)
+        @Data
+        @NoArgsConstructor
+        @AllArgsConstructor
+        static class ObjectDetections{
+            @JsonProperty(value = "objects")
+            @NotNull
+            @Valid
+            List<ObjectDetection> detectedObjects;
+            @JsonProperty(value = "timestamp")
+            @Valid
             DetectionTimestamp detectionTimestamp;
 
-
-            record DetectionTimestamp(Duration from, Duration to){}
+            record ObjectDetection(@NotBlank String name, @Min(1) int count){}
         }
+
+        record DetectionTimestamp(@NotNull Duration from, @NotNull Duration to){}
 
     }
 
@@ -62,10 +88,4 @@ public class VideoDetails {
         this.details = details;
     }
 
-    /* TO-DO
-    Zrobic entity do tabelki video_detections i ogarnac wewnatrz obsluge JSONB tak zeby
-    sensownie moc zapisywac informacje okreslone przez model wykrywania żeby na podstawie JSONa np:
-    - Móc określić w którym momencie filmiku wykryto zdarzenie (zeby np. w UI zaznaczyć ten moment na timelinie
-    - (EWENTUALNIE JEZELI TO NIE BEDZIE ROBIONE PRZEZ MODEL) Móc zaznaczyć na video fragment obrazu gdzie wystepuje zdarzenie
-     */
 }
