@@ -44,16 +44,34 @@ Request parameters
 - *video-name* - video name which will be assigned in database
 - *description* - description for video (optional)
 - *relative-path* - path in which video will be saved in backend's file system.
-- *details* - details json (optional)
+- *details* - details json
   *example*
 ```
-{"detections":[{                //list of detected actions in video
-  "label":"DETECTION_LABEL",    //label of detection
-  "timestamp":{                 //detection timestamp in ISO 8601 format
-    "from":"PT0S",
-    "to":"PT1S"
-  }
-}]}
+{
+"events": [
+    {
+    "label": "DETECTION_LABEL",
+    "timestamp": {
+        "from": "PT0S",
+        "to": "PT1S"
+        }
+    }
+],
+"detections": [
+    {
+    "objects": [
+        {
+        "name": "human",
+        "count": 0
+        }
+    ],
+    "timestamp": {
+        "from": "PT0S",
+        "to": "PT1S"
+        }
+    }
+]
+}
 ```
 Saves specified video.
 
@@ -64,7 +82,7 @@ curl -X POST http://localhost:8080/videos/upload `
  -F "video-name=VIDEO_NAME" `
  -F "description=DESCRIPTION" `
  -F "relative-path=saved_video.mov" `
- -F 'details={"detections":[{"label":"DETECTION_LABEL","timestamp":{"from":"PT0S","to":"PT1S"}}]};type=application/json'
+ -F 'details={"events":[{"label":"DETECTION_LABEL","timestamp":{"from":"PT0S","to":"PT1S"}}],"detections":[{"objects":[{"name":"human","count":1}],"timestamp":{"from":"PT0S","to":"PT1S"}}]};type=application/json'
 ```
 ## Frontend endpoint (temporary overview build)
 ##### GET /
