@@ -31,8 +31,73 @@ docker compose -f docker/docker-compose.yml up
 *(db container must be up for backend to start without errors!)*
 ## Backend endpoints
 
-##### GET /videos
-Return JSON of registered video record.
+##### GET /videos?page=&size=&sort=
+Return JSON of registered video records page.
+**Params:**
+- *page* - page number (from 0, optional, default: page=0)
+- *size* - number of elements per page (optional, default: size=10)
+- *sort* - comma seperated sort list (optional, default: sort=uploadDate,desc&sort=name)  
+*To sort the results by more than one property, keep adding as many sort=PROPERTY parameters as you need.*  
+
+**Example request**  
+`http://localhost:8080/videos?size=2`
+```json
+{
+  "content": [
+      {
+      "id": "736b52f2-c2e3-4e83-9f17-2077f18ec9cd",
+      "name": "VIDEO_NAME",
+      "description": "DESCRIPTION",
+      "upload_date": "2026-02-18T19:18:19.244461"
+      },
+      {
+      "id": "d0544456-34d5-49fc-9372-0c3f164f56b0",
+      "name": "VIDEO_NAME",
+      "description": "DESCRIPTION",
+      "upload_date": "2026-02-18T19:16:32.147637"
+      }
+  ],
+  "page": {
+      "size": 2,
+      "number": 0,
+      "totalElements": 3,
+      "totalPages": 2
+  }
+}
+```
+##### GET /videos/{video_id}/info
+Specified video details.  
+
+**Request example**  
+`localhost:8080/videos/736b52f2-c2e3-4e83-9f17-2077f18ec9cd/info`
+```json
+{
+"events": [
+    {
+    "label": "DETECTION_LABEL",
+    "timestamp": { 
+        "from": "PT0S", //Duration in ISO-8601 format
+        "to": "PT1S"
+        }
+    }
+],
+"detections": [
+    {
+    "objects": [
+        {
+        "name": "human",
+        "count": 0
+        }
+    ],
+    "timestamp": {
+        "from": "PT0S",
+        "to": "PT1S"
+        }
+    }
+]
+}
+```
+
 
 ##### GET /videos/{video_id}
 Request for video partial content.
@@ -45,8 +110,8 @@ Request parameters
 - *description* - description for video (optional)
 - *relative-path* - path in which video will be saved in backend's file system.
 - *details* - details json
-  *example*
-```
+  *details example*
+```json
 {
 "events": [
     {
