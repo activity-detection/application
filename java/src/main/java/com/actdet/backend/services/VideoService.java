@@ -4,6 +4,7 @@ import com.actdet.backend.data.entities.Video;
 import com.actdet.backend.data.entities.VideoDetails;
 import com.actdet.backend.data.repositories.VideoDetailsRepository;
 import com.actdet.backend.data.repositories.VideoRepository;
+import com.actdet.backend.services.dtos.VideoDTO;
 import com.actdet.backend.services.exceptions.RecordNotFoundException;
 import com.actdet.backend.services.exceptions.RecordSavingException;
 import jakarta.transaction.Transactional;
@@ -11,6 +12,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.Files;
@@ -103,6 +107,14 @@ public class VideoService {
         }
         return deletedRecordsCount.get();
     }
+
+    public Page<VideoDTO> getVideos(final Pageable pageable){
+        final Page<Video> page = videoRepository.findAll(pageable);
+        return new PageImpl<>(page.getContent().stream()
+                .map(VideoDTO::new)
+                .toList(), pageable, page.getTotalElements());
+    }
+
 
     public Path getVideoFolderPath(){return this.videoFolderPath;}
     public int getMaxDepth(){return this.maxDepth;}

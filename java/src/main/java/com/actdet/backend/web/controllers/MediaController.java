@@ -4,13 +4,18 @@ import com.actdet.backend.data.entities.Video;
 import com.actdet.backend.data.entities.VideoDetails;
 import com.actdet.backend.data.repositories.VideoRepository;
 import com.actdet.backend.services.VideoStorageService;
-import com.actdet.backend.web.controllers.bodies.ResponseVideoBody;
+import com.actdet.backend.services.dtos.VideoDTO;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.support.ResourceRegion;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.web.SortDefault;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
 
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -47,11 +52,11 @@ public class MediaController {
         return ResponseEntity.ok(videoStorageService.getVideoDetails(fileIdentifier));
     }
 
-
-    //Tymczasowy endpoint do podgladu jakie pliki sie zapisaly
     @GetMapping("")
-    public List<ResponseVideoBody> getAllVideos(){
-        return videoRepository.findAll().stream().map(ResponseVideoBody::new).toList();
+    public ResponseEntity<?> getVideos(
+            @PageableDefault(size = 10, sort = {"uploadDate", "name"}, direction = Sort.Direction.DESC) Pageable pageable
+    ){
+        return ResponseEntity.ok(videoStorageService.getVideos(pageable));
     }
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

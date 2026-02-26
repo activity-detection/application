@@ -43,7 +43,7 @@ public class Video {
     private String description;
 
     @Column(name = "upload_date", insertable = false, updatable = false)
-    private LocalDateTime upload_date;
+    private LocalDateTime uploadDate;
 
     @Column(name = "video_path", length = 255, nullable = false, unique = true)
     private String pathToFile;
