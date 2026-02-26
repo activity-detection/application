@@ -2,7 +2,6 @@ package com.actdet.backend.services;
 
 import com.actdet.backend.data.entities.Video;
 import com.actdet.backend.data.entities.VideoDetails;
-import com.actdet.backend.services.dtos.VideoDTO;
 import com.actdet.backend.services.exceptions.FileSavingException;
 import com.actdet.backend.services.exceptions.RecordSavingException;
 import com.actdet.backend.services.exceptions.RequestException;
@@ -13,8 +12,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.ResourceRegion;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRange;
 import org.springframework.stereotype.Service;
@@ -31,12 +28,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
-public class VideoStorageService {
+public class VideoFileStorageService {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private final VideoService videoService;
 
-    public VideoStorageService(VideoService videoService) {
+    public VideoFileStorageService(VideoService videoService) {
         this.videoService = videoService;
     }
 
@@ -108,12 +105,5 @@ public class VideoStorageService {
 
     }
 
-    public VideoDetails.Details getVideoDetails(String videoId){
-        return videoService.getVideoDetails(videoId);
-    }
-
-    public Page<VideoDTO> getVideos(Pageable pageable){
-        return videoService.getVideos(pageable);
-    }
 
 }
