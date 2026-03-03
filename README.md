@@ -40,7 +40,8 @@ Return JSON of registered video records page.
   *To sort the results by more than one property, keep adding as many sort=PROPERTY parameters as you need.*
 
 **Example request**  
-`http://localhost:8080/videos?size=2`
+`http://localhost:8080/videos?size=2`  
+**Example response**
 ```json
 {
   "content": [
@@ -149,6 +150,153 @@ curl -X POST http://localhost:8080/videos/upload `
  -F "relative-path=saved_video.mov" `
  -F 'details={"events":[{"label":"DETECTION_LABEL","timestamp":{"from":"PT0S","to":"PT1S"}}],"detections":[{"objects":[{"name":"human","count":1}],"timestamp":{"from":"PT0S","to":"PT1S"}}]};type=application/json'
 ```
+
+##### GET /rules?page=&size=&sort=
+Return JSON of saved detection templates page.
+**Params:**
+- *page* - page number (from 0, optional, default: page=0)
+- *size* - number of elements per page (optional, default: size=10)
+- *sort* - comma seperated sort list (optional, default: sort=name)  
+  *To sort the results by more than one property, keep adding as many sort=PROPERTY parameters as you need.*
+
+**Example request**  
+`http://localhost:8080/rules?size=2`  
+**Example response**
+```json
+{
+  "content": [
+    {
+      "name": "Stranger_Danger", //Template name
+      "vector_count": 1, //Number of diffrent rule vectors meeting template's detection criteria
+      "vectors": [
+        {
+          "vector_id": 10,
+          "rules": [ //List of detection vector rules
+            {
+              "count": 12,
+              "range": false, //Does rule contain requirements in range (count_from, count_to)
+              "element_name": "knife" //Detected element name
+            },
+            {
+              "range": true,
+              "element_name": "human",
+              "count_from": 10,
+              "count_to": 55
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "page": {
+    "size": 10,
+    "number": 0,
+    "totalElements": 2,
+    "totalPages": 1
+  }
+}
+```
+##### POST /rules
+Creates new detection template.  
+**Example request body**
+```json
+{
+    "name": "Stranger_Danger", //Created detection template name
+    "vectors": [ //Created template list of rule vectors
+        {
+            "rules": [ //Vector rules
+                {
+                    "element_name": "knife", //Detected element name
+                    "count": 5 //non-range count
+                },
+                {
+                    "element_name": "human",
+                    "count_from": 10, //count in range
+                    "count_to": 50 //count in range
+                }
+            ]
+        }
+    ]
+}
+```
+
+**Example request**
+```
+curl -X POST 'http://localhost:8080/rules' `
+--header 'Content-Type: application/json' `
+--data '{
+    "name": "Malware_Detection_Standard",
+    "vectors": [
+        {
+            "rules": [
+                {
+                    "element_name": "knife",
+                    "count": 5
+                },
+                {
+                    "element_name": "human",
+                    "count_from": 10,
+                    "count_to": 50
+                }
+            ]
+        }
+    ]
+}'
+```
+##### PUT /rules
+Edits existing detection template.
+*Note: this requires full set of vectors and rules as old vectors are replaced*
+**Example request body**
+```json
+{
+    "name": "Stranger_Danger", //Edited template name
+    "new_name": "Friendly_Friend", //*Optional* edited template's new name
+    "vectors": [
+        {
+            "vector_id": 1,
+            "rules": [
+                {
+                    "element_name": "human",
+                    "count": 12
+                }
+            ]
+        }
+    ]
+}
+```
+
+**Example request**
+```
+curl.exe -X PUT 'http://localhost:8080/rules' `
+--header 'Content-Type: application/json' `
+--data '{
+    "name": "Malware_Detection_Standard",
+    "vectors": [
+        {
+            "vector_id": 1,
+            "rules": [
+                {
+                    "element_name": "process_count",
+                    "count": 12
+                }
+            ]
+        }
+    ]
+}'
+```
+
+##### DELETE /rules
+Deletes specified template.
+**Params:**
+- *name* - template name to delete
+
+**Example request**
+```
+curl -X DELETE 'http://localhost:8080/rules/?name=Malware_Detection_v2'
+```
+
+
+
 ## Frontend endpoint (temporary overview build)
 ##### GET /
 Check if frontend is running.

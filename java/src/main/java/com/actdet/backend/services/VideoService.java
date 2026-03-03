@@ -110,9 +110,7 @@ public class VideoService {
 
     public Page<VideoDTO> getVideos(final Pageable pageable){
         final Page<Video> page = videoRepository.findAll(pageable);
-        return new PageImpl<>(page.getContent().stream()
-                .map(VideoDTO::new)
-                .toList(), pageable, page.getTotalElements());
+        return new PageImpl<>(page.get().map(VideoDTO::new).toList(), pageable, page.getTotalElements());
     }
 
 

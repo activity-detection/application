@@ -1,66 +1,32 @@
 package com.actdet.backend.data.entities;
 
-import com.actdet.backend.data.entities.ids.DetectionVectorId;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.Objects;
+import java.util.List;
 
 @Entity
 @Table(name = "detection_vectors")
 @NoArgsConstructor
 public class DetectionVector {
-    @EmbeddedId
-    private DetectionVectorId id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Getter
+    private Integer id;
 
     @ManyToOne
-    @MapsId("detectionTagId")
-    @JoinColumn(name = "detection_tag_id")
+    @JoinColumn(name = "detection_template_id")
     @Setter
-    private DetectionTag tag;
+    @Getter
+    private DetectionTemplate template;
 
-    @ManyToOne
-    @MapsId("detectionElementId")
-    @JoinColumn(name= "detection_element_id")
-    @Setter
-    private DetectionElement element;
-
-    @Column(name = "is_range", updatable = false)
-    private Boolean isRange;
-
-    @Column(name = "count")
+    @OneToMany(mappedBy = "vector", orphanRemoval = true, cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @Getter
     @Setter
-    private Short count;
-    @Column(name = "count_from")
-    @Getter
-    @Setter
-    private Short countFrom;
-    @Column(name = "count_to")
-    @Getter
-    @Setter
-    private Short countTo;
-
-    public boolean isRange() {
-        return isRange;
-    }
-
-    public String getElementName(){
-        return this.element.getName();
-    }
+    private List<DetectionRule> rules;
 
 
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
-        DetectionVector vector = (DetectionVector) o;
-        return Objects.equals(tag, vector.tag) && Objects.equals(element, vector.element) && Objects.equals(count, vector.count) && Objects.equals(countFrom, vector.countFrom) && Objects.equals(countTo, vector.countTo);
-    }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(tag, element, count, countFrom, countTo);
-    }
 }

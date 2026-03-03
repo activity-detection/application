@@ -16,7 +16,7 @@ CREATE TABLE video_details(
     CONSTRAINT fk_videos_video_detections FOREIGN KEY (video_id) REFERENCES videos(video_id) ON DELETE CASCADE
 );
 
-CREATE TABLE detection_tags (
+CREATE TABLE detection_templates (
     id SERIAL PRIMARY KEY,
     detection_name VARCHAR(100) NOT NULL UNIQUE
 );
@@ -27,19 +27,25 @@ CREATE TABLE detection_elements (
 );
 
 CREATE TABLE detection_vectors (
-    detection_tag_id INT NOT NULL,
+    id SERIAL PRIMARY KEY,
+    detection_template_id INT NOT NULL,
+    CONSTRAINT fk_vector_template FOREIGN KEY (detection_template_id) REFERENCES detection_templates(id)
+);
+
+CREATE TABLE detection_rule (
+    detection_vector_id INT NOT NULL,
     detection_element_id INT NOT NULL,
     is_range BOOLEAN GENERATED ALWAYS AS (count IS NULL) STORED,
     count SMALLINT,
     count_from SMALLINT,
     count_to SMALLINT,
-    PRIMARY KEY (detection_tag_id, detection_element_id),
-    CONSTRAINT fk_vector_tag FOREIGN KEY (detection_tag_id) REFERENCES detection_tags(id),
-    CONSTRAINT fk_vector_element FOREIGN KEY (detection_element_id) REFERENCES detection_elements(id),
+    PRIMARY KEY (detection_vector_id, detection_element_id),
+    CONSTRAINT fk_rule_vector FOREIGN KEY (detection_vector_id) REFERENCES detection_vectors(id),
+    CONSTRAINT fk_rule_element FOREIGN KEY (detection_element_id) REFERENCES detection_elements(id),
 
     CHECK(
         (count IS NOT NULL AND count_from IS NULL AND count_to IS NULL)
-        OR
+            OR
         (count IS NULL AND (count_from IS NOT NULL OR count_to IS NOT NULL))
-    )
-);
+        )
+)
