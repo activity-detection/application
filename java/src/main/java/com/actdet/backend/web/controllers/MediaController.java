@@ -5,6 +5,7 @@ import com.actdet.backend.data.entities.VideoDetails;
 import com.actdet.backend.services.VideoService;
 import com.actdet.backend.services.VideoFileStorageService;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.support.ResourceRegion;
 import org.springframework.data.domain.Pageable;
@@ -51,6 +52,7 @@ public class MediaController {
 
     @GetMapping("")
     public ResponseEntity<?> getVideos(
+            @ParameterObject
             @PageableDefault(size = 10, sort = {"uploadDate", "name"}, direction = Sort.Direction.DESC) Pageable pageable
     ){
         return ResponseEntity.ok(videoService.getVideos(pageable));

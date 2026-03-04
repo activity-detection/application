@@ -4,6 +4,7 @@ import com.actdet.backend.services.DetectionRulesService;
 import com.actdet.backend.web.controllers.bodies.CreateDetectionTemplateRequest;
 import com.actdet.backend.web.controllers.bodies.EditDetectionTemplateRequest;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -39,6 +40,7 @@ public class DetectionRulesController {
 
     @GetMapping("")
     public ResponseEntity<?> getDetectionTemplates(
+            @ParameterObject
             @PageableDefault(size = 10, sort = {"name"}, direction = Sort.Direction.ASC) Pageable pageable
     ){
         return ResponseEntity.ok(detectionRulesService.getAllDetectionRules(pageable));
