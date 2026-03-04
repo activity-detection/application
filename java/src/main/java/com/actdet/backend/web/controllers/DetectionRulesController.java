@@ -11,6 +11,21 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/*
+Trzeba sprawdzić obsługę (i ewentualnie ją dodać) edge case'ow typu:
+- dodawanie templatu o istniejacej juz nazwie
+- co jak nazwa zmienianego/usuwanego templatu nie istnieje
+- dodatkowa konfiguracja advise'a zeby nie wyrzucala na wszystko internal server error (trzeba zmienic rzucane wyjatki)
+
+Docelowo dodanie funkcjonalności, aby dla każdego filmu pokazywało nazwe templatu dla ktorego zostalo dane zdarzenie wykryte
+jak również w przypadku większej ilości templatów jakie dane zdarzenie spełnia, ich również pokazywanie
+(to sprawi, że przy dodawaniu kolejnych templatow w przyszłości fragment filmu bedzie mogl byc kwalifikowany jako spelniajacy
+kilka z nich)
+
+
+ */
+
+
 @RestController
 @RequestMapping("/rules")
 public class DetectionRulesController {
