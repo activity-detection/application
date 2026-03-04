@@ -3,7 +3,7 @@ WORKDIR /app
 
 COPY pom.xml .
 COPY src ./src
-#Narazie skip tests potem to zmienic
+#Na razie skip tests potem to zmienic
 RUN mvn clean package -DskipTests
 
 #Runner do uruchamiania po zbudowaniu
