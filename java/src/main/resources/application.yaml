@@ -15,4 +15,6 @@ activity-detector:
 springdoc.api-docs.enabled: true
 springdoc.swagger-ui.enabled: false
 
+server.forward-headers-strategy: framework
+
 
