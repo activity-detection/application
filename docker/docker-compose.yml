@@ -23,7 +23,7 @@ services:
     depends_on:
       - db
     environment:
-      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      CORS_ALLOWED_ORIGINS: http://localhost
     networks:
       - backend-net
     ports:
@@ -35,12 +35,12 @@ services:
       context: ../../frontend/
       dockerfile: .Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:8080/
+        NEXT_PUBLIC_API_URL: http://localhost/api
    container_name: ac_frontend
    depends_on:
     - backend
    environment:
-    - NEXT_PUBLIC_API_URL=http://localhost:8080/
+    - NEXT_PUBLIC_API_URL=http://localhost/api
    networks:
     - frontend-net
    ports:
