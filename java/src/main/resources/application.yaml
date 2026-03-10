@@ -9,7 +9,7 @@ spring:
 
 activity-detector:
   video:
-    folderPath: ${VIDEO_FOLDER_PATH:videos} #Sciezka wzieta ze zmiennej srodowiskowej lub jezeli jej nie ma domyslna wartosc \videos
+    folderPath: ${VIDEO_FOLDER_PATH:videos} #Sciezka wzieta ze zmiennej srodowiskowej lub jezeli jej nie ma domyslna wartosc videos
     subfolderDepth: 1 #Liczba poziomów subfolderów w katalogu z video. 0 oznacza brak subfolderow w katalogu.
 
   detected-elements:

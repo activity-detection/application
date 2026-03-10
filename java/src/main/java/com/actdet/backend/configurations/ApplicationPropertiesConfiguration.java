@@ -31,8 +31,8 @@ public class ApplicationPropertiesConfiguration {
     static class VideoProperties {
         @NotEmpty
         @Pattern(
-                regexp = "^(?!.*/).*",
-                message = "folderPath cannot contain the backslash character (/)! Use '\\' characters instead."
+            regexp = "^(?!.*\\\\).*$",
+            message = "folderPath cannot contain the backslash character (\\\\)! Use '/' characters instead."
         )
         private final String folderPath;
         @Min(value = 0, message = "Depth cannot be smaller than 0!")
