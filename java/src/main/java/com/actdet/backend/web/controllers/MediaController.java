@@ -11,6 +11,7 @@ import org.springframework.core.io.support.ResourceRegion;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,7 +19,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/videos")
@@ -56,12 +59,23 @@ public class MediaController {
         return ResponseEntity.ok(videoService.getVideoDetails(fileIdentifier));
     }
 
+//    @GetMapping("")
+//    public ResponseEntity<?> getVideos(
+//            @ParameterObject
+//            @PageableDefault(size = 10, sort = {"uploadDate", "name"}, direction = Sort.Direction.DESC) Pageable pageable
+//    ){
+//        return ResponseEntity.ok(videoService.getVideos(pageable));
+//    }
+
     @GetMapping("")
     public ResponseEntity<?> getVideos(
-            @ParameterObject
-            @PageableDefault(size = 10, sort = {"uploadDate", "name"}, direction = Sort.Direction.DESC) Pageable pageable
-    ){
-        return ResponseEntity.ok(videoService.getVideos(pageable));
+            @PageableDefault(size = 10, sort = {"uploadDate", "name"}, direction = Sort.Direction.DESC) Pageable pageable,
+            @RequestParam(value = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(value = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to
+            ){
+        LocalDateTime fromDate = Optional.ofNullable(from).orElse(LocalDateTime.of(2000,1,1,0,0));
+        LocalDateTime toDate = Optional.ofNullable(to).orElse(LocalDateTime.of(2200,1,1,0,0));
+        return ResponseEntity.ok(videoService.getVideos(pageable, fromDate, toDate));
     }
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

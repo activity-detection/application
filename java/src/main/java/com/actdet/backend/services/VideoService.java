@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
@@ -126,6 +128,11 @@ public class VideoService {
 
     public Page<VideoDTO> getVideos(final Pageable pageable){
         final Page<Video> page = videoRepository.findAll(pageable);
+        return new PageImpl<>(page.get().map(VideoDTO::new).toList(), pageable, page.getTotalElements());
+    }
+
+    public Page<VideoDTO> getVideos(final Pageable pageable, LocalDateTime from, LocalDateTime to){
+        final Page<Video> page = videoRepository.findAllByUploadDateGreaterThanEqualAndUploadDateLessThanEqual(pageable, from, to);
         return new PageImpl<>(page.get().map(VideoDTO::new).toList(), pageable, page.getTotalElements());
     }
 
