@@ -4,8 +4,10 @@ spring:
     username: user
     password: password
 
-video:
-  folderPath: /app/videos
+
+activity-detector:
+  video:
+    folder-path: /app/videos
 
 cors:
   allowed-origins: http://localhost:3000

@@ -11,15 +11,20 @@ import org.springframework.validation.annotation.Validated;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 @Validated
 @ConfigurationProperties(prefix = "activity-detector")
 public class ApplicationPropertiesConfiguration {
+    private final List<String> detectedElements;
+
+
     @Valid
     private final VideoProperties video;
 
-    public ApplicationPropertiesConfiguration(VideoProperties video) {
+    public ApplicationPropertiesConfiguration(VideoProperties video, List<String> detectedElements) {
         this.video = video;
+        this.detectedElements = detectedElements;
     }
 
 
@@ -43,5 +48,9 @@ public class ApplicationPropertiesConfiguration {
             if (!Files.isDirectory(dirPath)) throw new IllegalArgumentException("Specified video.folderPath ("+dirPath+") is not a path to directory!");
 
         }
+    }
+
+    public List<String> getDetectedElementsNames(){
+        return detectedElements;
     }
 }

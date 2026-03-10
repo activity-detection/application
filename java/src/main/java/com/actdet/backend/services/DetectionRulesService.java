@@ -174,21 +174,11 @@ public class DetectionRulesService {
     private Map<String, DetectionElement> createDetectionElementMap(Set<String> elementNames) {
         Map<String, DetectionElement> elementMap = detectionElementRepository.findByNameIn(elementNames).stream()
                 .collect(Collectors.toMap(DetectionElement::getName, element -> element));
-
-        for (String name : elementNames) {
-            elementMap.computeIfAbsent(name, n -> {
-                DetectionElement e = new DetectionElement();
-                e.setName(n);
-                return e;
-            });
-        }
-        List<DetectionElement> newElements = elementMap.values().stream()
-                .filter(element -> element.getId() == null).toList();
-
-        if (!newElements.isEmpty()) {
-            detectionElementRepository.saveAllAndFlush(newElements).forEach(e -> {
-                elementMap.put(e.getName(), e);
-            });
+        List<String> missingElementNames = elementNames.stream()
+                .filter(name -> !elementMap.containsKey(name))
+                .toList();
+        if (!missingElementNames.isEmpty()) {
+            throw new RecordNotFoundException("Specified detection elements are not supported: "+missingElementNames.toString());
         }
 
         return elementMap;

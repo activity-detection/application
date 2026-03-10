@@ -19,6 +19,13 @@ public class DetectionElement {
     @Setter
     private String name;
 
+    public DetectionElement() {
+    }
+
+    public DetectionElement(String name) {
+        this.name = name;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;

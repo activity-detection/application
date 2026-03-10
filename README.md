@@ -159,6 +159,29 @@ curl -X DELETE http://localhost:8080/videos/1c383b78-63a7-4058-8297-55e8a873f06b
 ```
 
 #### Detection rules
+##### GET /rules/elements
+Returns JSON of supported detection elements based on *activity-detector.detected-elements* application property.
+**Example request**
+``http://localhost:8080/rules/elements`
+**Example response**
+```json
+[
+    {
+        "id": 1,
+        "name": "human"
+    },
+    {
+        "id": 2,
+        "name": "knife"
+    },
+    {
+        "id": 3,
+        "name": "backpack"
+    }
+]
+```
+
+
 ##### GET /rules?page=&size=&sort=
 Return JSON of saved detection templates page.
 **Params:**

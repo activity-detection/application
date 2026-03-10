@@ -1,5 +1,6 @@
 package com.actdet.backend.web.controllers;
 
+import com.actdet.backend.services.DetectionPropertiesService;
 import com.actdet.backend.services.DetectionRulesService;
 import com.actdet.backend.web.controllers.bodies.CreateDetectionTemplateRequest;
 import com.actdet.backend.web.controllers.bodies.EditDetectionTemplateRequest;
@@ -32,10 +33,12 @@ kilka z nich)
 public class DetectionRulesController {
 
     private DetectionRulesService detectionRulesService;
+    private DetectionPropertiesService detectionPropertiesService;
 
     @Autowired
-    public DetectionRulesController(DetectionRulesService detectionRulesService) {
+    public DetectionRulesController(DetectionRulesService detectionRulesService, DetectionPropertiesService detectionPropertiesService) {
         this.detectionRulesService = detectionRulesService;
+        this.detectionPropertiesService = detectionPropertiesService;
     }
 
     @GetMapping("")
@@ -72,6 +75,12 @@ public class DetectionRulesController {
             detectionRulesService.editDetectionTemplate(request.getTemplateName(), request.getNewTemplateName(), request.getVectors());
         }
         return ResponseEntity.ok().build();
+    }
+
+
+    @GetMapping("/elements")
+    public ResponseEntity<?> getDetectedElements(){
+        return ResponseEntity.ok(detectionPropertiesService.getSupportedDetectionElements());
     }
 
 }

@@ -1,15 +1,14 @@
 package com.actdet.backend.web.controllers.advice;
 
 import com.actdet.backend.services.exceptions.*;
-import com.actdet.backend.web.controllers.MediaController;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
-@ControllerAdvice(assignableTypes = MediaController.class)
-public class MediaControllerExceptionHandler {
+@ControllerAdvice
+public class GlobalControllerExceptionHandler {
 
     @Value("${activity-detector.controllers.show-error-details-in-response:false}")
     private boolean showErrorDetails;
