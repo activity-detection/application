@@ -30,14 +30,14 @@ docker compose -f docker/docker-compose.yml up
 *(--build flag can be added for image rebuilding purposes)*  
 *(db container must be up for backend to start without errors!)*
 ## Backend endpoints
-
+#### Videos
 ##### GET /videos?page=&size=&sort=
 Return JSON of registered video records page.
 **Params:**
 - *page* - page number (from 0, optional, default: page=0)
 - *size* - number of elements per page (optional, default: size=10)
 - *sort* - comma seperated sort list (optional, default: sort=uploadDate,desc&sort=name)  
-*To sort the results by more than one property, keep adding as many sort=PROPERTY parameters as you need.*  
+  *To sort the results by more than one property, keep adding as many sort=PROPERTY parameters as you need.*
 
 **Example request**  
 `http://localhost:8080/videos?size=2`  
@@ -67,7 +67,7 @@ Return JSON of registered video records page.
 }
 ```
 ##### GET /videos/{video_id}/info
-Specified video details.  
+Specified video details.
 
 **Request example**  
 `localhost:8080/videos/736b52f2-c2e3-4e83-9f17-2077f18ec9cd/info`
@@ -149,9 +149,16 @@ curl -X POST http://localhost:8080/videos/upload `
  -F "description=DESCRIPTION" `
  -F "relative-path=saved_video.mov" `
  -F 'details={"events":[{"label":"DETECTION_LABEL","timestamp":{"from":"PT0S","to":"PT1S"}}],"detections":[{"objects":[{"name":"human","count":1}],"timestamp":{"from":"PT0S","to":"PT1S"}}]};type=application/json'
-```  
-*Note: "file" parameter should point to video file on your disk*  
+```
 
+##### DELETE /videos/{video_id}
+Deletes video from database and disk space.
+**Example request**
+```
+curl -X DELETE http://localhost:8080/videos/1c383b78-63a7-4058-8297-55e8a873f06b
+```
+
+#### Detection rules
 ##### GET /rules?page=&size=&sort=
 Return JSON of saved detection templates page.
 **Params:**
@@ -159,9 +166,9 @@ Return JSON of saved detection templates page.
 - *size* - number of elements per page (optional, default: size=10)
 - *sort* - comma seperated sort list (optional, default: sort=name)  
   *To sort the results by more than one property, keep adding as many sort=PROPERTY parameters as you need.*
-  
+
 **Example request**  
-  `http://localhost:8080/rules?size=2`  
+`http://localhost:8080/rules?size=2`  
 **Example response**
 ```json
 {
@@ -202,22 +209,22 @@ Creates new detection template.
 **Example request body**
 ```json
 {
-    "name": "Stranger_Danger", //Created detection template name
-    "vectors": [ //Created template list of rule vectors
+  "name": "Stranger_Danger", //Created detection template name
+  "vectors": [ //Created template list of rule vectors
+    {
+      "rules": [ //Vector rules
         {
-            "rules": [ //Vector rules
-                {
-                    "element_name": "knife", //Detected element name
-                    "count": 5 //non-range count
-                },
-                {
-                    "element_name": "human",
-                    "count_from": 10, //count in range
-                    "count_to": 50 //count in range
-                }
-            ]
+          "element_name": "knife", //Detected element name
+          "count": 5 //non-range count
+        },
+        {
+          "element_name": "human",
+          "count_from": 10, //count in range
+          "count_to": 50 //count in range
         }
-    ]
+      ]
+    }
+  ]
 }
 ```
 
@@ -250,19 +257,19 @@ Edits existing detection template.
 **Example request body**
 ```json
 {
-    "name": "Stranger_Danger", //Edited template name
-    "new_name": "Friendly_Friend", //*Optional* edited template's new name
-    "vectors": [
+  "name": "Stranger_Danger", //Edited template name
+  "new_name": "Friendly_Friend", //*Optional* edited template's new name
+  "vectors": [
+    {
+      "vector_id": 1,
+      "rules": [
         {
-            "vector_id": 1,
-            "rules": [
-                {
-                    "element_name": "human",
-                    "count": 12
-                }
-            ]
+          "element_name": "human",
+          "count": 12
         }
-    ]
+      ]
+    }
+  ]
 }
 ```
 
