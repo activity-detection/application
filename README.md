@@ -30,7 +30,7 @@ docker compose -f docker/docker-compose.yml up
 *(--build flag can be added for image rebuilding purposes)*  
 *(db container must be up for backend to start without errors!)*
 ## Backend endpoints
-
+#### Videos
 ##### GET /videos?page=&size=&sort=
 Return JSON of registered video records page.
 **Params:**
@@ -151,6 +151,14 @@ curl -X POST http://localhost:8080/videos/upload `
  -F 'details={"events":[{"label":"DETECTION_LABEL","timestamp":{"from":"PT0S","to":"PT1S"}}],"detections":[{"objects":[{"name":"human","count":1}],"timestamp":{"from":"PT0S","to":"PT1S"}}]};type=application/json'
 ```
 
+##### DELETE /videos/{video_id}
+Deletes video from database and disk space.
+**Example request**
+```
+curl -X DELETE http://localhost:8080/videos/1c383b78-63a7-4058-8297-55e8a873f06b
+```
+
+#### Detection rules
 ##### GET /rules?page=&size=&sort=
 Return JSON of saved detection templates page.
 **Params:**
