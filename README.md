@@ -45,24 +45,24 @@ Return JSON of registered video records page.
 ```json
 {
   "content": [
-      {
+    {
       "id": "736b52f2-c2e3-4e83-9f17-2077f18ec9cd",
       "name": "VIDEO_NAME",
       "description": "DESCRIPTION",
       "upload_date": "2026-02-18T19:18:19.244461"
-      },
-      {
+    },
+    {
       "id": "d0544456-34d5-49fc-9372-0c3f164f56b0",
       "name": "VIDEO_NAME",
       "description": "DESCRIPTION",
       "upload_date": "2026-02-18T19:16:32.147637"
-      }
+    }
   ],
   "page": {
-      "size": 2,
-      "number": 0,
-      "totalElements": 3,
-      "totalPages": 2
+    "size": 2,
+    "number": 0,
+    "totalElements": 3,
+    "totalPages": 2
   }
 }
 ```
@@ -73,29 +73,29 @@ Specified video details.
 `localhost:8080/videos/736b52f2-c2e3-4e83-9f17-2077f18ec9cd/info`
 ```json
 {
-"events": [
+  "events": [
     {
-    "label": "DETECTION_LABEL",
-    "timestamp": { 
+      "label": "DETECTION_LABEL",
+      "timestamp": {
         "from": "PT0S", //Duration in ISO-8601 format
         "to": "PT1S"
-        }
+      }
     }
-],
-"detections": [
+  ],
+  "detections": [
     {
-    "objects": [
+      "objects": [
         {
-        "name": "human",
-        "count": 0
+          "name": "human",
+          "count": 0
         }
-    ],
-    "timestamp": {
+      ],
+      "timestamp": {
         "from": "PT0S",
         "to": "PT1S"
-        }
+      }
     }
-]
+  ]
 }
 ```
 
@@ -114,29 +114,29 @@ Request parameters
   *details example*
 ```json
 {
-"events": [
+  "events": [
     {
-    "label": "DETECTION_LABEL",
-    "timestamp": {
+      "label": "DETECTION_LABEL",
+      "timestamp": {
         "from": "PT0S",
         "to": "PT1S"
-        }
+      }
     }
-],
-"detections": [
+  ],
+  "detections": [
     {
-    "objects": [
+      "objects": [
         {
-        "name": "human",
-        "count": 0
+          "name": "human",
+          "count": 0
         }
-    ],
-    "timestamp": {
+      ],
+      "timestamp": {
         "from": "PT0S",
         "to": "PT1S"
-        }
+      }
     }
-]
+  ]
 }
 ```
 Saves specified video.
@@ -159,6 +159,29 @@ curl -X DELETE http://localhost:8080/videos/1c383b78-63a7-4058-8297-55e8a873f06b
 ```
 
 #### Detection rules
+##### GET /rules/elements
+Returns JSON of supported detection elements based on *activity-detector.detected-elements* application property.
+**Example request**
+``http://localhost:8080/rules/elements`
+**Example response**
+```json
+[
+    {
+        "id": 1,
+        "name": "human"
+    },
+    {
+        "id": 2,
+        "name": "knife"
+    },
+    {
+        "id": 3,
+        "name": "backpack"
+    }
+]
+```
+
+
 ##### GET /rules?page=&size=&sort=
 Return JSON of saved detection templates page.
 **Params:**
@@ -209,22 +232,22 @@ Creates new detection template.
 **Example request body**
 ```json
 {
-  "name": "Stranger_Danger", //Created detection template name
-  "vectors": [ //Created template list of rule vectors
-    {
-      "rules": [ //Vector rules
+    "name": "Stranger_Danger", //Created detection template name
+    "vectors": [ //Created template list of rule vectors
         {
-          "element_name": "knife", //Detected element name
-          "count": 5 //non-range count
-        },
-        {
-          "element_name": "human",
-          "count_from": 10, //count in range
-          "count_to": 50 //count in range
+            "rules": [ //Vector rules
+                {
+                    "element_name": "knife", //Detected element name
+                    "count": 5 //non-range count
+                },
+                {
+                    "element_name": "human",
+                    "count_from": 10, //count in range
+                    "count_to": 50 //count in range
+                }
+            ]
         }
-      ]
-    }
-  ]
+    ]
 }
 ```
 
