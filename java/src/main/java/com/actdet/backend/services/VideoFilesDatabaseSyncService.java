@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.nio.file.*;
@@ -54,7 +53,7 @@ public class VideoFilesDatabaseSyncService {
         this.watchedDirectory = baseDir.resolve(relativeFolderPath);
 
 
-        this.rootDepth = StringUtils.countOccurrencesOf(this.watchedDirectory.toString(), "\\");
+        this.rootDepth = this.watchedDirectory.toAbsolutePath().normalize().getNameCount();
         this.maxSubfolderDepth = subfolderDepth;
         this.videoService = videoService;
         this.pathMap = new HashMap<>();
@@ -172,15 +171,19 @@ public class VideoFilesDatabaseSyncService {
     }
 
     private String getVideoRelativePathString(Path path){
-        int depth = 0;
-        int index = -1;
-        String pathString = path.toString();
-        while(depth<=this.rootDepth){
-            index = pathString.indexOf('\\', index+1);
-            if(index == -1) throw new IllegalArgumentException("Could not return video relative path string. File depth is incorrect.");
-            depth++;
+        Path normalizedRoot = this.watchedDirectory.toAbsolutePath().normalize();
+        Path normalizedPath = path.toAbsolutePath().normalize();
+
+        if(!normalizedPath.startsWith(normalizedRoot)) {
+            throw new IllegalArgumentException("Could not return video relative path string. File is outside of watched directory.");
         }
-        return pathString.substring(index+1);
+
+        Path relativePath = normalizedRoot.relativize(normalizedPath);
+        if(relativePath.getNameCount() == 0) {
+            throw new IllegalArgumentException("Could not return video relative path string. File depth is incorrect.");
+        }
+
+        return relativePath.toString();
     }
 
 
@@ -204,7 +207,7 @@ public class VideoFilesDatabaseSyncService {
 
     private void onFileCreated(Path createdFilePath){
         if(Files.isDirectory(createdFilePath)){
-            int createdDirDepth = StringUtils.countOccurrencesOf(createdFilePath.toString(), "\\");
+            int createdDirDepth = createdFilePath.toAbsolutePath().normalize().getNameCount();
             if(this.maxSubfolderDepth>=createdDirDepth-this.rootDepth){
                 try{
                     register(createdFilePath);
