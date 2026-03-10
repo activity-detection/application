@@ -149,7 +149,8 @@ curl -X POST http://localhost:8080/videos/upload `
  -F "description=DESCRIPTION" `
  -F "relative-path=saved_video.mov" `
  -F 'details={"events":[{"label":"DETECTION_LABEL","timestamp":{"from":"PT0S","to":"PT1S"}}],"detections":[{"objects":[{"name":"human","count":1}],"timestamp":{"from":"PT0S","to":"PT1S"}}]};type=application/json'
-```
+```  
+*Note: "file" parameter should point to video file on your disk*  
 
 ##### GET /rules?page=&size=&sort=
 Return JSON of saved detection templates page.

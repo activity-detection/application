@@ -2,7 +2,7 @@ services:
   db:
     build:
       context: ../../backend/db/
-      dockerfile: ../../backend/db/.Dockerfile
+      dockerfile: .Dockerfile
     container_name: ac_db
     environment:
       POSTGRES_USER: user
@@ -12,6 +12,7 @@ services:
       - backend-net
     ports:
       - "5433:5432"
+    restart: on-failure:5
     volumes:
       - ac-data-vol:/var/lib/postgresql/data
 
@@ -28,7 +29,7 @@ services:
       - backend-net
     ports:
       - "8080:8080"
-    restart: always
+    restart: on-failure:5
 
   frontend:
    build:
@@ -45,7 +46,7 @@ services:
     - frontend-net
    ports:
     - "3000:3000"
-   restart: always
+   restart: on-failure:5
 
   nginx:
     depends_on:
@@ -58,7 +59,7 @@ services:
     ports:
       - "80:80"
       # - "443:443"
-    restart: unless-stopped
+    restart: on-failure:5
     volumes:
       - ../nginx.conf:/etc/nginx/nginx.conf:ro
 

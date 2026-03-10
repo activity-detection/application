@@ -18,7 +18,7 @@ services:
   backend:
     build:
       context: ../../backend/java/
-      dockerfile: dev.Dockerfile
+      dockerfile: .Dockerfile
     container_name: ac_backend
     depends_on:
       - db
@@ -29,11 +29,6 @@ services:
       - frontend-net
     ports:
       - "8080:8080"
-    restart: always
-    volumes:
-      - ../../backend/java/src:/app/src
-      - ../../backend/java/pom.xml:/app/pom.xml
-      - ~/.m2:/root/.m2
 
   frontend:
     build:
@@ -48,7 +43,6 @@ services:
       - frontend-net
     ports:
       - "3000:3000"
-    restart: always
     volumes:
       - ../../frontend/src:/app/src
       - ../../frontend/public:/app/public
@@ -64,7 +58,6 @@ services:
     ports:
       - "80:80"
       # - "443:443"
-    restart: unless-stopped
     volumes:
       - ../nginx.conf:/etc/nginx/nginx.conf:ro
 
