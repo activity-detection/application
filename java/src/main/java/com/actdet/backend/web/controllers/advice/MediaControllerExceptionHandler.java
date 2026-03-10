@@ -1,9 +1,6 @@
 package com.actdet.backend.web.controllers.advice;
 
-import com.actdet.backend.services.exceptions.FileSavingException;
-import com.actdet.backend.services.exceptions.RecordNotFoundException;
-import com.actdet.backend.services.exceptions.RecordSavingException;
-import com.actdet.backend.services.exceptions.RequestException;
+import com.actdet.backend.services.exceptions.*;
 import com.actdet.backend.web.controllers.MediaController;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -22,7 +19,8 @@ public class MediaControllerExceptionHandler {
     }
 
 
-    @ExceptionHandler({RequestException.class, RecordNotFoundException.class, RecordSavingException.class})
+    @ExceptionHandler({RequestException.class, RecordNotFoundException.class, RecordSavingException.class,
+            VideoNotFoundException.class})
     public ResponseEntity<?> handleBadRequest(Exception ex){
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(getBody(ex));
     }

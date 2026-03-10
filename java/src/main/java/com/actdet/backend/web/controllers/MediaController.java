@@ -45,6 +45,12 @@ public class MediaController {
                 .body(resource);
     }
 
+    @DeleteMapping("/{fileIdentifier}")
+    public ResponseEntity<?> deleteVideo(@PathVariable String fileIdentifier) throws IOException {
+        videoService.deleteVideoByFileIdentifier(fileIdentifier);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/{fileIdentifier}/info")
     public ResponseEntity<?> getVideoInfo(@PathVariable("fileIdentifier") String fileIdentifier){
         return ResponseEntity.ok(videoService.getVideoDetails(fileIdentifier));

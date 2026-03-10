@@ -21,4 +21,5 @@ public interface VideoRepository extends JpaRepository<Video, UUID> {
     @Query("SELECT v.pathToFile FROM Video v WHERE v.id = :id")
     Optional<String> getPathById(UUID id);
 
+    Video deleteVideoById(UUID id);
 }

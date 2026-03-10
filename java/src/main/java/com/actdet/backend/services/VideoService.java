@@ -7,6 +7,7 @@ import com.actdet.backend.data.repositories.VideoRepository;
 import com.actdet.backend.services.dtos.VideoDTO;
 import com.actdet.backend.services.exceptions.RecordNotFoundException;
 import com.actdet.backend.services.exceptions.RecordSavingException;
+import com.actdet.backend.services.exceptions.VideoNotFoundException;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +18,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -32,6 +35,7 @@ public class VideoService {
     private final int maxDepth;
     private final VideoRepository videoRepository;
     private final VideoDetailsRepository videoDetailsRepository;
+
     @Autowired
     public VideoService(@Value("${activity-detector.video.folderPath}") String relativeFolderPath,
                         @Value("${activity-detector.video.subfolderDepth}") int subfolderDepth,
@@ -87,6 +91,18 @@ public class VideoService {
     @Transactional
     public void deleteVideoDatabaseRecord(String videoPath){
         videoRepository.deleteVideoByPathToFile(videoPath);
+    }
+
+    @Transactional
+    public void deleteVideoByFileIdentifier(String fileIdentifier) throws IOException {
+        Video deletedVideo = videoRepository.findById(UUID.fromString(fileIdentifier))
+                .orElseThrow(() -> new RecordNotFoundException("Specified record does not exist"));
+        Path deletedVideoPath = videoFolderPath.resolve(Paths.get(deletedVideo.getPathToFile()));
+        try{
+            Files.delete(deletedVideoPath);
+        }catch(IOException e){
+            throw new VideoNotFoundException("Specified video does not exist");
+        }
     }
 
     public boolean isVideoRecordRegistered(String videoPath){
