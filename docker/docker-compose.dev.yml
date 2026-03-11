@@ -18,7 +18,7 @@ services:
   backend:
     build:
       context: ../../backend/java/
-      dockerfile: .Dockerfile
+      dockerfile: dev.Dockerfile
     container_name: ac_backend
     depends_on:
       - db
@@ -29,6 +29,8 @@ services:
       - frontend-net
     ports:
       - "8080:8080"
+    volumes:
+      - ../../backend/java/src/main/resources:/app/config
 
   frontend:
     build:

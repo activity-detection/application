@@ -11,15 +11,16 @@ help:
 	@echo "  make total-clean   - Remove containers and built Docker images"
 
 prod:
-	docker-compose build
 	docker-compose up
 
 dev:
-	docker-compose -f docker-compose.dev.yml build
 	docker-compose -f docker-compose.dev.yml up
 
-build:
-	docker-compose build
+prod-build:
+	docker compose up --build
+
+dev-build:
+	docker compose -f docker-compose.dev.yml up --build
 
 down:
 	docker-compose down
@@ -32,3 +33,6 @@ clean:
 
 total-clean:
 	docker-compose down --rmi all --remove-orphans --timeout 30
+
+restart-backend:
+	docker compose restart backend
