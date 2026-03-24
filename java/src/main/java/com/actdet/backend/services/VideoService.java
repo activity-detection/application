@@ -59,22 +59,28 @@ public class VideoService {
     }
 
     private String getFilePathForId(String id){
-        return videoRepository.getPathById(UUID.fromString(id))
-                .orElseThrow(() -> new RecordNotFoundException("Plik z podanym id ("+id+") nie istnieje!"));
-    }
+        try{
+            return videoRepository.getPathById(UUID.fromString(id))
+                    .orElseThrow(() -> new RecordNotFoundException("Plik z podanym id ("+id+") nie istnieje!"));
+        } catch(IllegalArgumentException e){
+            throw new IllegalArgumentException("Invalid video UUID");
+        }
 
+    }
+    @Transactional
     public void saveVideoDatabaseRecord(String videoName, Path videoPath){
         saveVideoDatabaseRecord(videoName, null, videoPath);
     }
-
+    @Transactional
     public void saveVideoDatabaseRecord(String videoName, Path videoPath, VideoDetails.Details detailsJson){
         saveVideoDatabaseRecord(videoName, null, videoPath, detailsJson);
     }
-
+    @Transactional
     public void saveVideoDatabaseRecord(String videoName, String description, Path videoPath){
         saveVideoDatabaseRecord(videoName, description, videoPath, null);
     }
 
+    @Transactional
     public void saveVideoDatabaseRecord(String videoName, String description, Path videoPath, VideoDetails.Details details){
         String videoPathString = videoPath.toString();
         Video video = Video.builder().name(videoName).description(description).pathToFile(videoPathString).build();
@@ -96,7 +102,7 @@ public class VideoService {
     }
 
     @Transactional
-    public void deleteVideoByFileIdentifier(String fileIdentifier) throws IOException {
+    public void deleteVideoByFileIdentifier(String fileIdentifier) {
         Video deletedVideo = videoRepository.findById(UUID.fromString(fileIdentifier))
                 .orElseThrow(() -> new RecordNotFoundException("Specified record does not exist"));
         Path deletedVideoPath = videoFolderPath.resolve(Paths.get(deletedVideo.getPathToFile()));
