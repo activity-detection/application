@@ -4,7 +4,8 @@ help:
 	@echo "Available commands:"
 	@echo "  make prod           - Run production environment"
 	@echo "  make dev  		     - Run development environment"
-	@echo "  make build          - Build Docker images"
+	@echo "  make prod-build          - Build prod Docker images"
+	@echo "  make dev-build          - Build dev Docker images"
 	@echo "  make down           - Stop all containers"
 	@echo "  make logs           - Show container logs"
 	@echo "  make clean          - Remove containers and volumes"
@@ -30,9 +31,6 @@ logs:
 
 clean:
 	docker-compose -f docker-compose.dev.yml down -v
-
-total-clean:
-	docker-compose down --rmi all --remove-orphans --timeout 30
 
 restart-backend:
 	docker compose restart backend

@@ -56,13 +56,20 @@ Return JSON of registered video records page.
       "name": "VIDEO_NAME",
       "description": "DESCRIPTION",
       "upload_date": "2026-02-18T19:16:32.147637"
+    },
+    {
+      "id": "ed29641e-4ccc-435a-86b4-5819729fbfeb",
+      "name": "VIDEO_NAME",
+      "description": "DESCRIPTION",
+      "upload_date": "2026-04-01T15:18:25.768707",
+      "continuation_of": "d0544456-34d5-49fc-9372-0c3f164f56b0" //Specifies continued video id
     }
   ],
   "page": {
-    "size": 2,
+    "size": 3,
     "number": 0,
     "totalElements": 3,
-    "totalPages": 2
+    "totalPages": 1
   }
 }
 ```
@@ -73,29 +80,29 @@ Specified video details.
 `localhost:8080/videos/736b52f2-c2e3-4e83-9f17-2077f18ec9cd/info`
 ```json
 {
-  "events": [
+"events": [
     {
-      "label": "DETECTION_LABEL",
-      "timestamp": {
+    "label": "DETECTION_LABEL",
+    "timestamp": { 
         "from": "PT0S", //Duration in ISO-8601 format
         "to": "PT1S"
-      }
-    }
-  ],
-  "detections": [
-    {
-      "objects": [
-        {
-          "name": "human",
-          "count": 0
         }
-      ],
-      "timestamp": {
+    }
+],
+"detections": [
+    {
+    "objects": [
+        {
+        "name": "human",
+        "count": 0
+        }
+    ],
+    "timestamp": {
         "from": "PT0S",
         "to": "PT1S"
-      }
+        }
     }
-  ]
+]
 }
 ```
 
@@ -105,38 +112,40 @@ Request for video partial content.
 
 ##### POST /videos/upload
 *multipart/form-data*
+Upload of video via multipart/form-data. Returns id of saved video file.
 Request parameters
 - *file* - video file with supported extension.
 - *video-name* - video name which will be assigned in database
 - *description* - description for video (optional)
 - *relative-path* - path in which video will be saved in backend's file system.
+- *continuation-of* - id of continued video. (optional)
 - *details* - details json
   *details example*
 ```json
 {
-  "events": [
+"events": [
     {
-      "label": "DETECTION_LABEL",
-      "timestamp": {
+    "label": "DETECTION_LABEL",
+    "timestamp": {
         "from": "PT0S",
         "to": "PT1S"
-      }
-    }
-  ],
-  "detections": [
-    {
-      "objects": [
-        {
-          "name": "human",
-          "count": 0
         }
-      ],
-      "timestamp": {
+    }
+],
+"detections": [
+    {
+    "objects": [
+        {
+        "name": "human",
+        "count": 0
+        }
+    ],
+    "timestamp": {
         "from": "PT0S",
         "to": "PT1S"
-      }
+        }
     }
-  ]
+]
 }
 ```
 Saves specified video.
@@ -148,6 +157,7 @@ curl -X POST http://localhost:8080/videos/upload `
  -F "video-name=VIDEO_NAME" `
  -F "description=DESCRIPTION" `
  -F "relative-path=saved_video.mov" `
+ -F "continuation-of=16aaeafb-1f25-4b0b-aae3-3958bdc435fe" `
  -F 'details={"events":[{"label":"DETECTION_LABEL","timestamp":{"from":"PT0S","to":"PT1S"}}],"detections":[{"objects":[{"name":"human","count":1}],"timestamp":{"from":"PT0S","to":"PT1S"}}]};type=application/json'
 ```
 
