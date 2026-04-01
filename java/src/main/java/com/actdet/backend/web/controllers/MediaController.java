@@ -18,10 +18,12 @@ import org.springframework.web.multipart.MultipartFile;
 
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/videos")
@@ -59,14 +61,6 @@ public class MediaController {
         return ResponseEntity.ok(videoService.getVideoDetails(fileIdentifier));
     }
 
-//    @GetMapping("")
-//    public ResponseEntity<?> getVideos(
-//            @ParameterObject
-//            @PageableDefault(size = 10, sort = {"uploadDate", "name"}, direction = Sort.Direction.DESC) Pageable pageable
-//    ){
-//        return ResponseEntity.ok(videoService.getVideos(pageable));
-//    }
-
     @GetMapping("")
     public ResponseEntity<?> getVideos(
             @PageableDefault(size = 10, sort = {"uploadDate", "name"}, direction = Sort.Direction.DESC) Pageable pageable,
@@ -78,16 +72,17 @@ public class MediaController {
         return ResponseEntity.ok(videoService.getVideos(pageable, fromDate, toDate));
     }
 
-    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = "test/plain")
     public ResponseEntity<?> uploadVideo(@RequestParam("file") MultipartFile file,
                                          @RequestParam("video-name") String videoName,
                                          @RequestParam(value = "description", required = false) String description,
                                          @RequestParam("relative-path") String pathToSaveIn,
+                                         @RequestParam(value = "continuation-of", required = false) String continuatedVideoIdString,
                                          @RequestPart(value = "details") @Valid VideoDetails.Details detailsJson){
         if(!Video.hasSupportedExtension(Objects.requireNonNull(file.getOriginalFilename()))) return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-
-        videoFileStorageService.store(file, videoName, description, Paths.get(pathToSaveIn), detailsJson);
-        return ResponseEntity.ok().build();
+        UUID savedVideoUUID = videoFileStorageService.store(
+                file, videoName, description, Paths.get(pathToSaveIn), continuatedVideoIdString, detailsJson);
+        return ResponseEntity.ok(savedVideoUUID.toString());
     }
 
 }

@@ -48,6 +48,9 @@ public class Video {
     @Column(name = "video_path", length = 255, nullable = false, unique = true)
     private String pathToFile;
 
+    @Column(name = "referenced_video_id", columnDefinition = "uuid", nullable = true)
+    private UUID referencedVideoId;
+
     @OneToOne(
             mappedBy = "video",
             orphanRemoval = true,
@@ -57,10 +60,11 @@ public class Video {
 
 
     @Builder
-    public Video(String name, String description, String pathToFile, VideoDetails details) {
+    public Video(String name, String description, String pathToFile, UUID referencedVideoId, VideoDetails details) {
         this.name = name;
         this.description = description;
         this.pathToFile = pathToFile;
         this.videoDetails = details;
+        this.referencedVideoId = referencedVideoId;
     }
 }

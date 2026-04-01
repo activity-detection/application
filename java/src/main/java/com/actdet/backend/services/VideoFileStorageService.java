@@ -4,6 +4,7 @@ import com.actdet.backend.data.entities.Video;
 import com.actdet.backend.data.entities.VideoDetails;
 import com.actdet.backend.services.exceptions.FileSavingException;
 import com.actdet.backend.services.exceptions.RecordSavingException;
+import com.actdet.backend.services.exceptions.ReferencedVideoException;
 import com.actdet.backend.services.exceptions.RequestException;
 import com.actdet.backend.services.utils.VideoUtils;
 import jakarta.transaction.Transactional;
@@ -26,6 +27,8 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class VideoFileStorageService {
@@ -54,7 +57,10 @@ public class VideoFileStorageService {
     }
 
     @Transactional
-    public void store(MultipartFile file, String videoName, String description, Path filePathToSaveIn, VideoDetails.Details details){
+    public UUID store(MultipartFile file, String videoName, String description, Path filePathToSaveIn,
+                      String continuatedVideoIdString, VideoDetails.Details details){
+        UUID storedVideoUUID;
+
         if(file.isEmpty()){
             throw new FileSavingException("Cannot save empty file");
         }
@@ -78,16 +84,42 @@ public class VideoFileStorageService {
 
         boolean fileCreated = false;
         try(InputStream inputStream = file.getInputStream()){
+            UUID refVideoUUID = null;
+            if(continuatedVideoIdString!=null){
+                try{
+                    refVideoUUID = UUID.fromString(continuatedVideoIdString);
+                    if(!videoService.exists(refVideoUUID)){
+                        logger.error("The video that stored video is intended to continue does not exist in database under specified id.");
+                        throw new ReferencedVideoException("The video that stored video is intended to continue does not exist in database under specified path.");
+                    }
+                }catch (IllegalArgumentException | ReferencedVideoException e) {
+                    String errorMessage;
+                    if (e instanceof IllegalArgumentException) {
+                        logger.error("Specified id of continuated video is an incorrect UUID.");
+                        errorMessage = "Invalid UUID format.";
+                    } else {
+                        logger.error("The referenced video does not exist.");
+                        errorMessage = e.getMessage();
+                    }
+
+                    logger.warn("Video will be saved without continuation reference due to an ReferencedVideoException.");
+                    StringBuilder sb = new StringBuilder(description);
+                    sb.append("\n\nThis video was intended to be a continuation, however failed due to error: \n\"")
+                            .append(errorMessage)
+                            .append("\"");
+                    description = sb.toString();
+                }
+
+            }
             if(Files.exists(storePath)){
-                logger.error("File {} already exists!", storePath);
+                logger.error("File {} already exists on local storage! If you want to save its continuation specify continuation parameter", storePath);
                 throw new IOException();
             }else{
                 Files.createDirectories(timestampedDirPath);
                 Files.copy(inputStream, storePath);
             }
             fileCreated = true;
-
-            this.videoService.saveVideoDatabaseRecord(videoName, description, Paths.get(timestampString).resolve(savedFileName), details);
+            storedVideoUUID = this.videoService.saveVideoDatabaseRecord(videoName, description, Paths.get(timestampString).resolve(savedFileName), refVideoUUID, details);
         } catch (IOException e) {
             throw new FileSavingException("Failed to store video file on local.");
         } catch (RuntimeException e){
@@ -102,7 +134,7 @@ public class VideoFileStorageService {
         }
 
         logger.debug("Video file has been stored: {}", storePath);
-
+        return storedVideoUUID;
     }
 
 

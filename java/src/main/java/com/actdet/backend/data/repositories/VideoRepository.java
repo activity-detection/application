@@ -27,4 +27,6 @@ public interface VideoRepository extends JpaRepository<Video, UUID> {
     Video deleteVideoById(UUID id);
 
     Page<Video> findAllByUploadDateGreaterThanEqualAndUploadDateLessThanEqual(Pageable pageable, LocalDateTime uploadDateIsGreaterThan, LocalDateTime uploadDateIsLessThan);
+
+    Optional<UUID> findByPathToFile(String pathToFile);
 }

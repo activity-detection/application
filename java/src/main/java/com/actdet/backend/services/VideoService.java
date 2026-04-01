@@ -25,6 +25,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
@@ -53,6 +54,10 @@ public class VideoService {
         logger.info("IdentifierToVideoMapperService has been initialized. Video files will be read from: {}", this.videoFolderPath);
     }
 
+    public boolean exists(UUID videoIdentifier){
+        return videoRepository.existsById(videoIdentifier);
+    }
+
     public Path getVideoPathForIdentifier(String videoIdentifier){
         String fileName = getFilePathForId(videoIdentifier);
         return videoFolderPath.resolve(fileName);
@@ -68,24 +73,32 @@ public class VideoService {
 
     }
     @Transactional
-    public void saveVideoDatabaseRecord(String videoName, Path videoPath){
-        saveVideoDatabaseRecord(videoName, null, videoPath);
+    public UUID saveVideoDatabaseRecord(String videoName, Path videoPath){
+        return saveVideoDatabaseRecord(videoName, null, videoPath);
     }
     @Transactional
-    public void saveVideoDatabaseRecord(String videoName, Path videoPath, VideoDetails.Details detailsJson){
-        saveVideoDatabaseRecord(videoName, null, videoPath, detailsJson);
+    public UUID saveVideoDatabaseRecord(String videoName, Path videoPath, VideoDetails.Details detailsJson){
+        return saveVideoDatabaseRecord(videoName, null, videoPath, null, detailsJson);
     }
     @Transactional
-    public void saveVideoDatabaseRecord(String videoName, String description, Path videoPath){
-        saveVideoDatabaseRecord(videoName, description, videoPath, null);
+    public UUID saveVideoDatabaseRecord(String videoName, String description, Path videoPath){
+        return saveVideoDatabaseRecord(videoName, description, videoPath, null, null);
     }
 
     @Transactional
-    public void saveVideoDatabaseRecord(String videoName, String description, Path videoPath, VideoDetails.Details details){
+    public UUID saveVideoDatabaseRecord(String videoName, String description, Path videoPath, UUID referencedVideoId){
+        return saveVideoDatabaseRecord(videoName, description, videoPath, referencedVideoId, null);
+    }
+
+    @Transactional
+    public UUID saveVideoDatabaseRecord(String videoName, String description, Path videoPath, UUID referencedVideoId, VideoDetails.Details details){
         String videoPathString = videoPath.toString();
-        Video video = Video.builder().name(videoName).description(description).pathToFile(videoPathString).build();
+        Video video = Video.builder().name(videoName).description(description).pathToFile(videoPathString).referencedVideoId(referencedVideoId).build();
         if(videoRepository.existsVideoByPathToFile(videoPathString)){
             throw new RecordSavingException("Cannot save file under already existing path");
+        }
+        if(referencedVideoId!=null && !videoRepository.existsById(referencedVideoId)){
+            throw new RecordSavingException("Specified referenced video does not exist");
         }
         video = videoRepository.save(video);
         if(details!=null){
@@ -94,6 +107,7 @@ public class VideoService {
         }
 
         logger.debug("Record saved to database: {}", video);
+        return video.getId();
     }
 
     @Transactional
@@ -140,6 +154,13 @@ public class VideoService {
     public Page<VideoDTO> getVideos(final Pageable pageable, LocalDateTime from, LocalDateTime to){
         final Page<Video> page = videoRepository.findAllByUploadDateGreaterThanEqualAndUploadDateLessThanEqual(pageable, from, to);
         return new PageImpl<>(page.get().map(VideoDTO::new).toList(), pageable, page.getTotalElements());
+    }
+
+    public Optional<UUID> getVideoIdByRelativePathToFile(Path pathToFile){
+        if(pathToFile==null){
+            return Optional.empty();
+        }
+        return this.videoRepository.findByPathToFile(pathToFile.toString());
     }
 
 

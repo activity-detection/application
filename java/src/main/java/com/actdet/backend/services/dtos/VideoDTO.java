@@ -1,6 +1,7 @@
 package com.actdet.backend.services.dtos;
 
 import com.actdet.backend.data.entities.Video;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
@@ -14,11 +15,15 @@ public class VideoDTO {
     private String description;
     @JsonProperty(value = "upload_date")
     private LocalDateTime uploadDate;
+    @JsonProperty(value = "continuation_of")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private UUID continuationOf;
 
     public VideoDTO(Video video) {
         this.id = video.getId();
         this.name = video.getName();
         this.description = video.getDescription();
         this.uploadDate = video.getUploadDate();
+        this.continuationOf = video.getReferencedVideoId();
     }
 }

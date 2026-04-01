@@ -133,7 +133,7 @@ class VideoServiceTest {
             when(videoRepository.save(any())).thenReturn(new Video());
             when(videoDetailsRepository.save(any())).thenReturn(new VideoDetails());
             // when
-            videoService.saveVideoDatabaseRecord(videoName, description, path, details);
+            videoService.saveVideoDatabaseRecord(videoName, description, path, null, details);
             // then
             verify(videoRepository, times(1)).save(any());
             verify(videoDetailsRepository, times(1)).save(any());
@@ -150,7 +150,7 @@ class VideoServiceTest {
 
             when(videoRepository.existsVideoByPathToFile(any())).thenReturn(true);
             // when+then
-            assertThrows(RecordSavingException.class, () -> videoService.saveVideoDatabaseRecord(videoName, description, path, details));
+            assertThrows(RecordSavingException.class, () -> videoService.saveVideoDatabaseRecord(videoName, description, path, null, details));
             verify(videoRepository, never()).save(any());
         }
 
@@ -165,7 +165,7 @@ class VideoServiceTest {
             when(videoRepository.existsVideoByPathToFile(any())).thenReturn(false);
             when(videoRepository.save(any())).thenReturn(new Video());
             // when
-            videoService.saveVideoDatabaseRecord(videoName, description, path, details);
+            videoService.saveVideoDatabaseRecord(videoName, description, path, null, details);
             // then
             verify(videoRepository, times(1)).save(any());
             verify(videoDetailsRepository, never()).save(any());
@@ -185,7 +185,7 @@ class VideoServiceTest {
 
             Assertions.assertThat(fileToDelete).exists();
 
-            Video video = new Video("", "", fileToDelete.toString(), null);
+            Video video = new Video("", "", fileToDelete.toString(), null, null);
             when(videoRepository.findById(any())).thenReturn(Optional.of(video));
 
             //when
@@ -205,7 +205,7 @@ class VideoServiceTest {
 
             Assertions.assertThat(fileToDelete).doesNotExist();
 
-            Video video = new Video("", "", fileToDelete.toString(), null);
+            Video video = new Video("", "", fileToDelete.toString(), null, null);
             when(videoRepository.findById(any())).thenReturn(Optional.of(video));
 
             //when+then
