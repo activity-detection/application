@@ -5,6 +5,7 @@ import com.actdet.backend.data.entities.VideoDetails;
 import com.actdet.backend.data.repositories.VideoDetailsRepository;
 import com.actdet.backend.data.repositories.VideoRepository;
 import com.actdet.backend.services.dtos.VideoDTO;
+import com.actdet.backend.services.dtos.VideoSequenceDTO;
 import com.actdet.backend.services.exceptions.RecordNotFoundException;
 import com.actdet.backend.services.exceptions.RecordSavingException;
 import com.actdet.backend.services.exceptions.VideoNotFoundException;
@@ -25,9 +26,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
@@ -154,6 +155,42 @@ public class VideoService {
     public Page<VideoDTO> getVideos(final Pageable pageable, LocalDateTime from, LocalDateTime to){
         final Page<Video> page = videoRepository.findAllByUploadDateGreaterThanEqualAndUploadDateLessThanEqual(pageable, from, to);
         return new PageImpl<>(page.get().map(VideoDTO::new).toList(), pageable, page.getTotalElements());
+    }
+
+    // VideoSequences to "paczki" video zawierajace informacje:
+    // - Id początkowego video
+    // - lista video nastepujacych po sobie w poprawnej kolejnosci, z wymienionymi ich id oraz detailami
+
+    //TO JEST NIESKONCZONE
+
+    public Page<VideoSequenceDTO> getVideoSequences(final Pageable pageable, LocalDateTime from, LocalDateTime to){
+        final Page<UUID> page = videoRepository.findVideoSequencesOriginIds(pageable, from, to);
+        List<UUID> originIds = page.getContent();
+        if(originIds.isEmpty()) return new PageImpl<>(Collections.emptyList(), pageable, 0);
+
+        List<Video> allVideos = videoRepository.findAllVideoSequencesByOriginIds(originIds, pageable.getSort());
+
+        Map<UUID, List<Video>> videoSequenceMap = allVideos.stream().collect(Collectors.groupingBy(Video::getOriginId));
+        List<VideoSequenceDTO> videoSequencesList = originIds.stream().map(uuid -> {
+            List<Video> videoList = videoSequenceMap.get(uuid);
+            return new VideoSequenceDTO(videoList);
+        }).toList();
+
+        return new PageImpl<>(videoSequencesList, pageable, page.getTotalElements());
+    }
+
+    public VideoSequenceDTO getVideoSequence(String originVideoId){
+        UUID originVideoUUID;
+        try{
+            originVideoUUID = UUID.fromString(originVideoId);
+        } catch (IllegalArgumentException e){
+            throw new RecordNotFoundException("Specified record does not exist");
+        }
+
+        List<Video> videoList = videoRepository.findVideoSequenceByOriginId(originVideoUUID);
+        if(videoList.isEmpty()) throw new RecordNotFoundException("Specified record does not exist");
+
+        return new VideoSequenceDTO(videoList);
     }
 
     public Optional<UUID> getVideoIdByRelativePathToFile(Path pathToFile){

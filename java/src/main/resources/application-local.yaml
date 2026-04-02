@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5433/activitydetectordb
+    url: jdbc:postgresql://localhost:55433/activitydetectordb
     username: user
     password: password
 
@@ -11,3 +11,6 @@ logging:
 activity-detector:
   controllers:
     show-error-details-in-response: true
+
+logging.level.org.hibernate.SQL: DEBUG
+logging.level.org.hibernate.type.descriptor.sql.BasicBinder: TRACE

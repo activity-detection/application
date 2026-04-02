@@ -51,7 +51,7 @@ public class MediaController {
     }
 
     @DeleteMapping("/{fileIdentifier}")
-    public ResponseEntity<?> deleteVideo(@PathVariable String fileIdentifier) throws IOException {
+    public ResponseEntity<?> deleteVideo(@PathVariable String fileIdentifier) {
         videoService.deleteVideoByFileIdentifier(fileIdentifier);
         return ResponseEntity.ok().build();
     }
@@ -71,6 +71,23 @@ public class MediaController {
         LocalDateTime toDate = Optional.ofNullable(to).orElse(LocalDateTime.of(2200,1,1,0,0));
         return ResponseEntity.ok(videoService.getVideos(pageable, fromDate, toDate));
     }
+
+    @GetMapping("/sequences")
+    public ResponseEntity<?> getVideoSequences(
+            @PageableDefault(size = 10, sort = {"uploadDate", "name"}, direction = Sort.Direction.DESC) Pageable pageable,
+            @RequestParam(value = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(value = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to
+    ){
+        LocalDateTime fromDate = Optional.ofNullable(from).orElse(LocalDateTime.of(2000,1,1,0,0));
+        LocalDateTime toDate = Optional.ofNullable(to).orElse(LocalDateTime.of(2200,1,1,0,0));
+        return ResponseEntity.ok(videoService.getVideoSequences(pageable, fromDate, toDate));
+    }
+
+    @GetMapping("/sequences/{originId}")
+    public ResponseEntity<?> getVideoSequences(@PathVariable("originId") String originId){
+        return ResponseEntity.ok(videoService.getVideoSequence(originId));
+    }
+
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = "test/plain")
     public ResponseEntity<?> uploadVideo(@RequestParam("file") MultipartFile file,

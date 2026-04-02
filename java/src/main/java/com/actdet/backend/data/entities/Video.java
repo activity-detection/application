@@ -51,6 +51,9 @@ public class Video {
     @Column(name = "referenced_video_id", columnDefinition = "uuid", nullable = true)
     private UUID referencedVideoId;
 
+    @Column(name = "origin_id", insertable = false, updatable = false)
+    private UUID originId;
+
     @OneToOne(
             mappedBy = "video",
             orphanRemoval = true,
