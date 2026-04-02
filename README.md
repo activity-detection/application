@@ -45,34 +45,123 @@ Return JSON of registered video records page.
 ```json
 {
   "content": [
-    {
+      {
       "id": "736b52f2-c2e3-4e83-9f17-2077f18ec9cd",
       "name": "VIDEO_NAME",
       "description": "DESCRIPTION",
       "upload_date": "2026-02-18T19:18:19.244461"
-    },
-    {
+      },
+      {
       "id": "d0544456-34d5-49fc-9372-0c3f164f56b0",
       "name": "VIDEO_NAME",
       "description": "DESCRIPTION",
       "upload_date": "2026-02-18T19:16:32.147637"
-    },
-    {
+      },
+      {
       "id": "ed29641e-4ccc-435a-86b4-5819729fbfeb",
       "name": "VIDEO_NAME",
       "description": "DESCRIPTION",
       "upload_date": "2026-04-01T15:18:25.768707",
       "continuation_of": "d0544456-34d5-49fc-9372-0c3f164f56b0" //Specifies continued video id
+      }
+  ],
+  "page": {
+      "size": 3,
+      "number": 0,
+      "totalElements": 3,
+      "totalPages": 1
+  }
+}
+```
+
+##### GET /videos/sequences?page=&size=&sort=
+Returns JSON of video sequences.
+**Params:**
+- *page* - page number (from 0, optional, default: page=0)
+- *size* - number of elements per page (optional, default: size=10)
+- *sort* - comma seperated sort list (optional, default: sort=uploadDate,desc&sort=name)  
+  *To sort the results by more than one property, keep adding as many sort=PROPERTY parameters as you need.*
+
+**Example request**  
+`http://localhost:8080/videos/sequences?size=3`  
+**Example response**
+```json
+{
+  "content": [
+    {
+      "origin_id": "a12b0ccf-602b-471a-941e-c1037b5542f3", // id of video at the beginning of sequence
+      "sequence_upload_date": "2026-04-02T17:44:36.934171", // upload_date of last video in sequence (ergo of complete sequence)
+      "parts": [ // videos that the sequence consists of, in correct order
+        {
+          "id": "a12b0ccf-602b-471a-941e-c1037b5542f3",
+          "name": "Video2",
+          "description": "DESCRIPTION",
+          "upload_date": "2026-04-02T17:44:36.934171"
+        }
+      ]
+    },
+    {
+      "origin_id": "14bbd270-e4e9-4797-9f2e-df638263cc38",
+      "sequence_upload_date": "2026-04-02T17:44:16.148842",
+      "parts": [
+        {
+          "id": "14bbd270-e4e9-4797-9f2e-df638263cc38",
+          "name": "Video1",
+          "description": "DESCRIPTION",
+          "upload_date": "2026-04-02T17:44:16.148842"
+        },
+        {
+          "id": "5d4628aa-d61a-4391-b1d8-1f37617d3571",
+          "name": "Video1-2",
+          "description": "DESCRIPTION",
+          "upload_date": "2026-04-02T17:45:19.682346",
+          "continuation_of": "14bbd270-e4e9-4797-9f2e-df638263cc38"
+        }
+      ]
     }
   ],
   "page": {
     "size": 3,
     "number": 0,
-    "totalElements": 3,
+    "totalElements": 2,
     "totalPages": 1
   }
 }
 ```
+
+
+##### GET /videos/sequences/{originId}
+Returns JSON of video sequence specified by its origin video's id.
+**Params:**
+- *originId* - origin video's id
+
+**Example request**  
+`http://localhost:8080/videos/sequences/14bbd270-e4e9-4797-9f2e-df638263cc38`  
+**Example response**
+```json
+{
+  "origin_id": "14bbd270-e4e9-4797-9f2e-df638263cc38", // id of video at the beginning of sequence
+  "sequence_upload_date": "2026-04-02T17:45:19.682346", // upload_date of last video in sequence (ergo of complete sequence)
+  "parts": [ // videos that the sequence consists of, in correct order
+    {
+      "id": "14bbd270-e4e9-4797-9f2e-df638263cc38",
+      "name": "VIDEO_NAME",
+      "description": "DESCRIPTION",
+      "upload_date": "2026-04-02T17:44:16.148842"
+    },
+    {
+      "id": "5d4628aa-d61a-4391-b1d8-1f37617d3571",
+      "name": "dowiazanie",
+      "description": "DESCRIPTION",
+      "upload_date": "2026-04-02T17:45:19.682346",
+      "continuation_of": "14bbd270-e4e9-4797-9f2e-df638263cc38"
+    }
+  ]
+}
+```
+
+
+
 ##### GET /videos/{video_id}/info
 Specified video details.
 
@@ -290,19 +379,19 @@ Edits existing detection template.
 **Example request body**
 ```json
 {
-  "name": "Stranger_Danger", //Edited template name
-  "new_name": "Friendly_Friend", //*Optional* edited template's new name
-  "vectors": [
-    {
-      "vector_id": 1,
-      "rules": [
+    "name": "Stranger_Danger", //Edited template name
+    "new_name": "Friendly_Friend", //*Optional* edited template's new name
+    "vectors": [
         {
-          "element_name": "human",
-          "count": 12
+            "vector_id": 1,
+            "rules": [
+                {
+                    "element_name": "human",
+                    "count": 12
+                }
+            ]
         }
-      ]
-    }
-  ]
+    ]
 }
 ```
 
