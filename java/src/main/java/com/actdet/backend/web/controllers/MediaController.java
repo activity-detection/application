@@ -89,7 +89,7 @@ public class MediaController {
     }
 
 
-    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = "test/plain")
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = "text/plain")
     public ResponseEntity<?> uploadVideo(@RequestParam("file") MultipartFile file,
                                          @RequestParam("video-name") String videoName,
                                          @RequestParam(value = "description", required = false) String description,
