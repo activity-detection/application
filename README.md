@@ -45,31 +45,31 @@ Return JSON of registered video records page.
 ```json
 {
   "content": [
-      {
+    {
       "id": "736b52f2-c2e3-4e83-9f17-2077f18ec9cd",
       "name": "VIDEO_NAME",
       "description": "DESCRIPTION",
       "upload_date": "2026-02-18T19:18:19.244461"
-      },
-      {
+    },
+    {
       "id": "d0544456-34d5-49fc-9372-0c3f164f56b0",
       "name": "VIDEO_NAME",
       "description": "DESCRIPTION",
       "upload_date": "2026-02-18T19:16:32.147637"
-      },
-      {
+    },
+    {
       "id": "ed29641e-4ccc-435a-86b4-5819729fbfeb",
       "name": "VIDEO_NAME",
       "description": "DESCRIPTION",
       "upload_date": "2026-04-01T15:18:25.768707",
       "continuation_of": "d0544456-34d5-49fc-9372-0c3f164f56b0" //Specifies continued video id
-      }
+    }
   ],
   "page": {
-      "size": 3,
-      "number": 0,
-      "totalElements": 3,
-      "totalPages": 1
+    "size": 3,
+    "number": 0,
+    "totalElements": 3,
+    "totalPages": 1
   }
 }
 ```
@@ -198,6 +198,9 @@ Specified video details.
 
 ##### GET /videos/{video_id}
 Request for video partial content.
+
+##### GET /videos/sequences/{originId}/manifest.m3u8
+Returns manifest file for HLS protocol.
 
 ##### POST /videos/upload
 *multipart/form-data*
