@@ -7,6 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import java.io.IOException;
+
 @ControllerAdvice
 public class GlobalControllerExceptionHandler {
 
@@ -24,7 +26,7 @@ public class GlobalControllerExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(getBody(ex));
     }
 
-    @ExceptionHandler({FileSavingException.class})
+    @ExceptionHandler({IOException.class, FileSavingException.class})
     public ResponseEntity<?> handleIntervalServerError(Exception ex){
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(getBody(ex));
     }

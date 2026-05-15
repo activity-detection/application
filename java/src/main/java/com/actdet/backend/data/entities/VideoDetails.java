@@ -8,15 +8,13 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Type;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -44,18 +42,21 @@ public class VideoDetails {
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
-    public static class Details{
+    public static class Details {
+        @JsonProperty(value = "duration")
+        Duration duration;
+
         @JsonProperty("events")
         @Valid
-        List<EventDetection> eventDetections;
+        List<EventDetection> eventDetections = new ArrayList<>();
         @JsonProperty("detections")
         @Valid
-        List<ObjectDetections> detectedObjects;
+        List<ObjectDetections> detectedObjects = new ArrayList<>();
 
         @Data
         @NoArgsConstructor
         @AllArgsConstructor
-        static class EventDetection{
+        public static class EventDetection {
             @JsonProperty("label")
             @NotBlank
             String eventLabel;
@@ -63,23 +64,26 @@ public class VideoDetails {
             @Valid
             DetectionTimestamp detectionTimestamp;
         }
+
         //Musze ustawic ograniczenie zeby nie dalo sie podac wartosci czasowej poza granicami trwania filmu (zeby timestamp nie mogl byc np. dluzszy niz sam film)
         @Data
         @NoArgsConstructor
         @AllArgsConstructor
-        static class ObjectDetections{
+        public static class ObjectDetections {
             @JsonProperty(value = "objects")
             @NotNull
             @Valid
-            List<ObjectDetection> detectedObjects;
+            List<ObjectDetection> detectedObjects = new ArrayList<>();
             @JsonProperty(value = "timestamp")
             @Valid
             DetectionTimestamp detectionTimestamp;
 
-            record ObjectDetection(@NotBlank String name, @Min(1) int count){}
+            record ObjectDetection(@NotBlank String name, @Min(1) int count) {
+            }
         }
 
-        record DetectionTimestamp(@NotNull Duration from, @NotNull Duration to){}
+        public record DetectionTimestamp(@NotNull Duration from, @NotNull Duration to) {
+        }
 
     }
 

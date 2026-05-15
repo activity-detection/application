@@ -19,12 +19,11 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.LocalDate;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
@@ -51,58 +50,61 @@ public class VideoService {
         //Aktualnie sciezka do katalogu jest wzgledem katalogu w ktorym uruchamiamy projekt
         Path baseDir = Paths.get("").toAbsolutePath();
 
-        this.videoFolderPath =  baseDir.resolve(relativeFolderPath);
+        this.videoFolderPath = baseDir.resolve(relativeFolderPath);
         logger.info("IdentifierToVideoMapperService has been initialized. Video files will be read from: {}", this.videoFolderPath);
     }
 
-    public boolean exists(UUID videoIdentifier){
+    public boolean exists(UUID videoIdentifier) {
         return videoRepository.existsById(videoIdentifier);
     }
 
-    public Path getVideoPathForIdentifier(String videoIdentifier){
+    public Path getVideoPathForIdentifier(String videoIdentifier) {
         String fileName = getFilePathForId(videoIdentifier);
         return videoFolderPath.resolve(fileName);
     }
 
-    private String getFilePathForId(String id){
-        try{
+    private String getFilePathForId(String id) {
+        try {
             return videoRepository.getPathById(UUID.fromString(id))
-                    .orElseThrow(() -> new RecordNotFoundException("Plik z podanym id ("+id+") nie istnieje!"));
-        } catch(IllegalArgumentException e){
+                    .orElseThrow(() -> new RecordNotFoundException("Plik z podanym id (" + id + ") nie istnieje!"));
+        } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Invalid video UUID");
         }
 
     }
+
     @Transactional
-    public UUID saveVideoDatabaseRecord(String videoName, Path videoPath){
+    public UUID saveVideoDatabaseRecord(String videoName, Path videoPath) {
         return saveVideoDatabaseRecord(videoName, null, videoPath);
     }
+
     @Transactional
-    public UUID saveVideoDatabaseRecord(String videoName, Path videoPath, VideoDetails.Details detailsJson){
+    public UUID saveVideoDatabaseRecord(String videoName, Path videoPath, VideoDetails.Details detailsJson) {
         return saveVideoDatabaseRecord(videoName, null, videoPath, null, detailsJson);
     }
+
     @Transactional
-    public UUID saveVideoDatabaseRecord(String videoName, String description, Path videoPath){
+    public UUID saveVideoDatabaseRecord(String videoName, String description, Path videoPath) {
         return saveVideoDatabaseRecord(videoName, description, videoPath, null, null);
     }
 
     @Transactional
-    public UUID saveVideoDatabaseRecord(String videoName, String description, Path videoPath, UUID referencedVideoId){
+    public UUID saveVideoDatabaseRecord(String videoName, String description, Path videoPath, UUID referencedVideoId) {
         return saveVideoDatabaseRecord(videoName, description, videoPath, referencedVideoId, null);
     }
 
     @Transactional
-    public UUID saveVideoDatabaseRecord(String videoName, String description, Path videoPath, UUID referencedVideoId, VideoDetails.Details details){
+    public UUID saveVideoDatabaseRecord(String videoName, String description, Path videoPath, UUID referencedVideoId, VideoDetails.Details details) {
         String videoPathString = videoPath.toString();
         Video video = Video.builder().name(videoName).description(description).pathToFile(videoPathString).referencedVideoId(referencedVideoId).build();
-        if(videoRepository.existsVideoByPathToFile(videoPathString)){
+        if (videoRepository.existsVideoByPathToFile(videoPathString)) {
             throw new RecordSavingException("Cannot save file under already existing path");
         }
-        if(referencedVideoId!=null && !videoRepository.existsById(referencedVideoId)){
+        if (referencedVideoId != null && !videoRepository.existsById(referencedVideoId)) {
             throw new RecordSavingException("Specified referenced video does not exist");
         }
         video = videoRepository.save(video);
-        if(details!=null){
+        if (details != null) {
             VideoDetails vd = new VideoDetails(video, details);
             videoDetailsRepository.save(vd);
         }
@@ -112,7 +114,7 @@ public class VideoService {
     }
 
     @Transactional
-    public void deleteVideoDatabaseRecord(String videoPath){
+    public void deleteVideoDatabaseRecord(String videoPath) {
         videoRepository.deleteVideoByPathToFile(videoPath);
     }
 
@@ -121,24 +123,24 @@ public class VideoService {
         Video deletedVideo = videoRepository.findById(UUID.fromString(fileIdentifier))
                 .orElseThrow(() -> new RecordNotFoundException("Specified record does not exist"));
         Path deletedVideoPath = videoFolderPath.resolve(Paths.get(deletedVideo.getPathToFile()));
-        try{
+        try {
             Files.delete(deletedVideoPath);
-        }catch(IOException e){
+        } catch (IOException e) {
             throw new VideoNotFoundException("Specified video does not exist");
         }
     }
 
-    public boolean isVideoRecordRegistered(String videoPath){
+    public boolean isVideoRecordRegistered(String videoPath) {
         return videoRepository.existsVideoByPathToFile(videoPath);
     }
 
 
     @Transactional
-    public long deleteNonExistentVideoRecords(){
+    public long deleteNonExistentVideoRecords() {
         AtomicLong deletedRecordsCount = new AtomicLong();
-        try(Stream<String> stream = videoRepository.streamAllVideoPaths()){
+        try (Stream<String> stream = videoRepository.streamAllVideoPaths()) {
             stream.forEach(path -> {
-                if(!Files.isRegularFile(this.videoFolderPath.resolve(path))){
+                if (!Files.isRegularFile(this.videoFolderPath.resolve(path))) {
                     videoRepository.deleteVideoByPathToFile(path);
                     deletedRecordsCount.getAndIncrement();
                 }
@@ -147,12 +149,12 @@ public class VideoService {
         return deletedRecordsCount.get();
     }
 
-    public Page<VideoDTO> getVideos(final Pageable pageable){
+    public Page<VideoDTO> getVideos(final Pageable pageable) {
         final Page<Video> page = videoRepository.findAll(pageable);
         return new PageImpl<>(page.get().map(VideoDTO::new).toList(), pageable, page.getTotalElements());
     }
 
-    public Page<VideoDTO> getVideos(final Pageable pageable, LocalDateTime from, LocalDateTime to){
+    public Page<VideoDTO> getVideos(final Pageable pageable, LocalDateTime from, LocalDateTime to) {
         final Page<Video> page = videoRepository.findAllByUploadDateGreaterThanEqualAndUploadDateLessThanEqual(pageable, from, to);
         return new PageImpl<>(page.get().map(VideoDTO::new).toList(), pageable, page.getTotalElements());
     }
@@ -163,10 +165,10 @@ public class VideoService {
 
     //TO JEST NIESKONCZONE
 
-    public Page<VideoSequenceDTO> getVideoSequences(final Pageable pageable, LocalDateTime from, LocalDateTime to){
+    public Page<VideoSequenceDTO> getVideoSequences(final Pageable pageable, LocalDateTime from, LocalDateTime to) {
         final Page<UUID> page = videoRepository.findVideoSequencesOriginIds(pageable, from, to);
         List<UUID> originIds = page.getContent();
-        if(originIds.isEmpty()) return new PageImpl<>(Collections.emptyList(), pageable, 0);
+        if (originIds.isEmpty()) return new PageImpl<>(Collections.emptyList(), pageable, 0);
 
         List<Video> allVideos = videoRepository.findAllVideoSequencesByOriginIds(originIds, pageable.getSort());
 
@@ -179,34 +181,107 @@ public class VideoService {
         return new PageImpl<>(videoSequencesList, pageable, page.getTotalElements());
     }
 
-    public VideoSequenceDTO getVideoSequence(String originVideoId){
+    public VideoSequenceDTO getVideoSequence(String originVideoId) {
         UUID originVideoUUID;
-        try{
+        try {
             originVideoUUID = UUID.fromString(originVideoId);
-        } catch (IllegalArgumentException e){
+        } catch (IllegalArgumentException e) {
             throw new RecordNotFoundException("Specified record does not exist");
         }
 
         List<Video> videoList = videoRepository.findVideoSequenceByOriginId(originVideoUUID);
-        if(videoList.isEmpty()) throw new RecordNotFoundException("Specified record does not exist");
+        if (videoList.isEmpty()) throw new RecordNotFoundException("Specified record does not exist");
 
         return new VideoSequenceDTO(videoList);
     }
 
-    public Optional<UUID> getVideoIdByRelativePathToFile(Path pathToFile){
-        if(pathToFile==null){
+    public Optional<UUID> getVideoIdByRelativePathToFile(Path pathToFile) {
+        if (pathToFile == null) {
             return Optional.empty();
         }
         return this.videoRepository.findByPathToFile(pathToFile.toString());
     }
 
 
-    public Path getVideoFolderPath(){return this.videoFolderPath;}
-    public int getMaxDepth(){return this.maxDepth;}
+    public Path getVideoFolderPath() {
+        return this.videoFolderPath;
+    }
 
-    public VideoDetails.Details getVideoDetails(String videoId){
+    public int getMaxDepth() {
+        return this.maxDepth;
+    }
+
+    public VideoDetails.Details getVideoDetails(String videoId) {
         VideoDetails details = videoDetailsRepository.findById(UUID.fromString(videoId)).orElseThrow(() -> new RecordNotFoundException("Specified video does not exist"));
         return details.getDetails();
     }
+
+    public VideoDetails.Details getVideoSequenceDetails(String originId) {
+        VideoSequenceDTO videoSequenceDTO = getVideoSequence(originId);
+
+        List<UUID> ids = videoSequenceDTO.getVideos().stream()
+                .map(VideoDTO::getId)
+                .toList();
+
+        List<VideoDetails> unorderedDetails = videoDetailsRepository.findAllById(ids);
+        Map<UUID, VideoDetails> detailsMap = unorderedDetails.stream()
+                .collect(Collectors.toMap(VideoDetails::getId, d -> d));
+
+        List<VideoDetails.Details> orderedDetails = ids.stream()
+                .map(uuid -> detailsMap.get(uuid).getDetails())
+                .toList();
+
+        VideoDetails.Details sequenceDetails = new VideoDetails.Details();
+        Duration sequenceDuration = Duration.ZERO;
+
+        for(VideoDetails.Details details : orderedDetails){
+            Duration sd = sequenceDuration;
+            details.getDetectedObjects().forEach(objectDetections -> {
+                VideoDetails.Details.DetectionTimestamp dt = objectDetections.getDetectionTimestamp();
+                objectDetections.setDetectionTimestamp(new VideoDetails.Details.DetectionTimestamp(dt.from().plus(sd), dt.to().plus(sd)));
+            });
+
+            details.getEventDetections().forEach(eventDetection -> {
+                VideoDetails.Details.DetectionTimestamp dt = eventDetection.getDetectionTimestamp();
+                eventDetection.setDetectionTimestamp(new VideoDetails.Details.DetectionTimestamp(dt.from().plus(sd), dt.to().plus(sd)));
+            });
+
+
+            sequenceDetails.getEventDetections().addAll(details.getEventDetections());
+            sequenceDetails.getDetectedObjects().addAll(details.getDetectedObjects());
+            sequenceDuration = sequenceDuration.plus(details.getDuration());
+        }
+        sequenceDetails.setDuration(sequenceDuration);
+        return sequenceDetails;
+    }
+
+    public String getHlsManifestForSequence(String originId) throws IOException {
+        VideoSequenceDTO sequence = getVideoSequence(originId);
+
+        StringBuilder manifest = new StringBuilder();
+        manifest.append("#EXTM3U\n");
+        manifest.append("#EXT-X-VERSION:4\n");
+        manifest.append("#EXT-X-TARGETDURATION:900\n"); //Ustalenie maksymalnej dlugosci pojedynczego elementu w sekwencji HLS
+        manifest.append("#EXT-X-MEDIA-SEQUENCE:0\n\n");
+
+        for (VideoDTO videoDto : sequence.getVideos()) {
+            Path path = getVideoPathForIdentifier(videoDto.getId().toString());
+            long fileSize = Files.size(path);
+
+            VideoDetails.Details details = getVideoDetails(videoDto.getId().toString());
+            double durationInSeconds = details.getDuration().toMillis() / 1000.0;
+
+            manifest.append("#EXT-X-DISCONTINUITY\n");
+            manifest.append("#EXTINF:").append(String.format(Locale.US, "%.3f", durationInSeconds)).append(",\n");
+            manifest.append("#EXT-X-BYTERANGE: ").append(fileSize).append("@0\n");
+
+            //URL do pliku video
+            manifest.append("/videos/").append(videoDto.getId()).append("\n\n");
+        }
+
+        manifest.append("#EXT-X-ENDLIST");
+        return manifest.toString();
+    }
+
 
 }

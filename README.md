@@ -199,6 +199,9 @@ Specified video details.
 ##### GET /videos/{video_id}
 Request for video partial content.
 
+##### GET /videos/sequences/{originId}/manifest.m3u8
+Returns manifest file for HLS protocol.
+
 ##### POST /videos/upload
 *multipart/form-data*
 Upload of video via multipart/form-data. Returns id of saved video file.
