@@ -1,13 +1,17 @@
 "use client";
 
 import { useEffect } from "react";
-import { VideoProvider, useVideo } from "@/contexts/video";
-import { RulesProvider } from "@/contexts/rules";
+import { RulesProvider } from "@/features/detection-rules/context/detection-rules-context";
 import { LoadingScreen } from "@/components/loading-screen";
-import { VideoList } from "@/components/video-list";
+import { VideoList } from "@/features/detection-explorer/components/video-list";
+import {
+  DetectionExplorerProvider,
+  useDetectionExplorerContext,
+} from "@/features/detection-explorer/context/detection-explorer-context";
 
 function PageContent() {
-  const { apiLoading, checkApiHealth, loadVideosPage, apiOk } = useVideo();
+  const { apiLoading, checkApiHealth, loadVideosPage, apiOk } =
+    useDetectionExplorerContext();
 
   useEffect(() => {
     const initialize = async () => {
@@ -52,10 +56,10 @@ function PageContent() {
 
 export default function Home() {
   return (
-    <VideoProvider>
+    <DetectionExplorerProvider>
       <RulesProvider>
         <PageContent />
       </RulesProvider>
-    </VideoProvider>
+    </DetectionExplorerProvider>
   );
 }

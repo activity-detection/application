@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import dynamic from "next/dynamic";
-import { useVideo } from "@/contexts/video";
 import { cn } from "@/lib/utils";
 import {
   Table,
@@ -14,8 +13,9 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { VideoPlayer } from "./video-player";
-import SettingsWindow from "./settings-window";
+import { VideoPlayer } from "@/features/detection-explorer/components/video-player";
+import { useDetectionExplorerContext } from "@/features/detection-explorer/context/detection-explorer-context";
+import SettingsWindow from "@/features/detection-rules/components/settings-window";
 
 const DeleteVideosComponent = dynamic(
   () =>
@@ -58,7 +58,7 @@ export function VideoList() {
     totalElements,
     loadVideosPage,
     deleteVideos,
-  } = useVideo();
+  } = useDetectionExplorerContext();
 
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     key: "uploadDate",

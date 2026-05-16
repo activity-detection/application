@@ -12,14 +12,14 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { DetectionVectorDTO } from "@/models";
-import { useRules, type DetectionTemplateItem } from "@/contexts/rules";
+import { useRules, type DetectionTemplateItem } from "@/features/detection-rules/context/detection-rules-context";
 import {
   SettingsRuleCreator,
   type RuleFormData,
   type TemplateFormData,
   type VectorFormData,
-} from "@/components/settings-rule-creator";
-import { SettingsDeleteConfirmation } from "@/components/settings-delete-confirmation";
+} from "@/features/detection-rules/components/settings-rule-creator";
+import { SettingsDeleteConfirmation } from "@/features/detection-rules/components/settings-delete-confirmation";
 
 function createEmptyRule(defaultElementName = ""): RuleFormData {
   return {

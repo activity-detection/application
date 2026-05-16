@@ -19,7 +19,7 @@ import { getApiBaseUrl } from "@/lib/client";
 import {
   formatSecondsAsClock,
   parseIsoDurationToSeconds,
-} from "@/lib/duration";
+} from "@/utils/duration";
 
 interface VideoPlayerProps {
   videoId: string | null;

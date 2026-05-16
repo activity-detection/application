@@ -38,7 +38,7 @@ function unwrapPayload<T>(value: unknown): T {
   return value as T;
 }
 
-type VideoContextValue = {
+type DetectionExplorerContextValue = {
   apiOk: boolean | null;
   apiLoading: boolean;
   videosLoading: boolean;
@@ -60,13 +60,19 @@ type VideoContextValue = {
   ) => Promise<void>;
 };
 
-const VideoContext = createContext<VideoContextValue | undefined>(undefined);
+const DetectionExplorerContext = createContext<
+  DetectionExplorerContextValue | undefined
+>(undefined);
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ||
   "http://localhost:8080";
 
-export function VideoProvider({ children }: { children: ReactNode }) {
+export function DetectionExplorerProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const [apiOk, setApiOk] = useState<boolean | null>(null);
   const [apiLoading, setApiLoading] = useState(true);
   const [videosLoading, setVideosLoading] = useState(false);
@@ -215,7 +221,7 @@ export function VideoProvider({ children }: { children: ReactNode }) {
     [loadVideosPage, pageNumber],
   );
 
-  const value = useMemo<VideoContextValue>(
+  const value = useMemo<DetectionExplorerContextValue>(
     () => ({
       apiOk,
       apiLoading,
@@ -247,14 +253,18 @@ export function VideoProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <VideoContext.Provider value={value}>{children}</VideoContext.Provider>
+    <DetectionExplorerContext.Provider value={value}>
+      {children}
+    </DetectionExplorerContext.Provider>
   );
 }
 
-export function useVideo() {
-  const context = useContext(VideoContext);
+export function useDetectionExplorerContext() {
+  const context = useContext(DetectionExplorerContext);
   if (!context) {
-    throw new Error("useVideo must be used within VideoProvider");
+    throw new Error(
+      "useDetectionExplorerContext must be used within DetectionExplorerProvider",
+    );
   }
   return context;
 }
