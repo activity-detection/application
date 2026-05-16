@@ -1,8 +1,8 @@
 services:
   db:
     build:
-      context: ../../backend/db/
-      dockerfile: ../../backend/db/.Dockerfile
+      context: backend/db/
+      dockerfile: .Dockerfile
     container_name: ac_db
     environment:
       POSTGRES_USER: user
@@ -17,7 +17,7 @@ services:
 
   backend:
     build:
-      context: ../../backend/java/
+      context: backend/java/
       dockerfile: dev.Dockerfile
     container_name: ac_backend
     depends_on:
@@ -32,11 +32,11 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ../../backend/java/src/main/resources:/app/config
+      - ./backend/java/src/main/resources:/app/config
 
   frontend:
     build:
-      context: ../../frontend/
+      context: frontend/
       dockerfile: dev.Dockerfile
     container_name: ac_frontend
     depends_on:
@@ -48,8 +48,8 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ../../frontend/src:/app/src
-      - ../../frontend/public:/app/public
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
 
   nginx:
     depends_on:
@@ -62,7 +62,7 @@ services:
     ports:
       - "80:80"
     volumes:
-      - ../nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
 
   playwright:
     image: mcr.microsoft.com/playwright:v1.60.0-jammy
@@ -73,7 +73,7 @@ services:
       - frontend-net
     working_dir: /app
     volumes:
-      - ../../frontend:/app
+      - ./frontend:/app
     environment:
       - CI=1
     command: /bin/bash -c "npm install -D @playwright/test && npx playwright test"
