@@ -1,7 +1,7 @@
 services:
   db:
     build:
-      context: ../../backend/db/
+      context: backend/db/
       dockerfile: .Dockerfile
     container_name: ac_db
     environment:
@@ -18,7 +18,7 @@ services:
 
   backend:
     build:
-      context: ../../backend/java/
+      context: backend/java/
       dockerfile: .Dockerfile
     container_name: ac_backend
     depends_on:
@@ -32,21 +32,21 @@ services:
     restart: on-failure:5
 
   frontend:
-   build:
-      context: ../../frontend/
+    build:
+      context: frontend/
       dockerfile: .Dockerfile
       args:
         NEXT_PUBLIC_API_BASE_URL: http://localhost/api
-   container_name: ac_frontend
-   depends_on:
-    - backend
-   environment:
-    - NEXT_PUBLIC_API_BASE_URL=http://localhost/api
-   networks:
-    - frontend-net
-   ports:
-    - "3000:3000"
-   restart: on-failure:5
+    container_name: ac_frontend
+    depends_on:
+      - backend
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost/api
+    networks:
+      - frontend-net
+    ports:
+      - "3000:3000"
+    restart: on-failure:5
 
   nginx:
     depends_on:
@@ -61,31 +61,29 @@ services:
       # - "443:443"
     restart: on-failure:5
     volumes:
-      - ../nginx.conf:/etc/nginx/nginx.conf:ro
-
-  detector:
-    build:
-      context: ../../detector
-      dockerfile: Dockerfile
-    env_file: "../../detector/.env"
-    environment:
-      - BACKEND_UPLOAD_URL=http://backend:8080/videos/upload
-      - UPLOAD_CLIPS=True
-      - SAVE_CLIPS=False
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    depends_on:
-    - backend
-    - nginx
-    networks:
-      - backend-net
-      - frontend-net
-
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  # detector:
+  #   build:
+  #     context: detector
+  #     dockerfile: Dockerfile
+  #   env_file: "detector/.env"
+  #   environment:
+  #     - BACKEND_UPLOAD_URL=http://backend:8080/videos/upload
+  #     - UPLOAD_CLIPS=True
+  #     - SAVE_CLIPS=False
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: all
+  #             capabilities: [ gpu ]
+  #   depends_on:
+  #     - backend
+  #     - nginx
+  #   networks:
+  #     - backend-net
+  #     - frontend-net
 
 volumes:
   ac-data-vol:
