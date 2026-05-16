@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://db:5432/activitydetectordb
+    username: user
+    password: password
+
+
+activity-detector:
+  video:
+    folder-path: /app/videos
+
+cors:
+  allowed-origins: http://localhost:3000

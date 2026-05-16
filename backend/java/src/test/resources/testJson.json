@@ -1,0 +1,10 @@
+{
+  "details": {
+    "detections": [
+      {
+        "detectionLabel": "test",
+        "detectionTimestamp": { "from": "PT1S", "to": "PT2S" }
+      }
+    ]
+  }
+}
