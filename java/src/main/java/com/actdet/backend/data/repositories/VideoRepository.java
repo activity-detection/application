@@ -32,7 +32,8 @@ public interface VideoRepository extends JpaRepository<Video, UUID> {
 
     Page<Video> findAllByUploadDateGreaterThanEqualAndUploadDateLessThanEqual(Pageable pageable, LocalDateTime uploadDateIsGreaterThan, LocalDateTime uploadDateIsLessThan);
 
-    Optional<UUID> findByPathToFile(String pathToFile);
+    @Query("SELECT v.id FROM Video v WHERE v.pathToFile = :pathToFile")
+    Optional<UUID> findByPathToFile(@Param("pathToFile") String pathToFile);
 
     @Query("SELECT v.id FROM Video v WHERE v.referencedVideoId IS NULL " +
             "AND v.uploadDate >= :dateFrom AND v.uploadDate <= :dateTo")

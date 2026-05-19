@@ -9,6 +9,7 @@ RUN mvn clean package -DskipTests
 #Runner do uruchamiania po zbudowaniu
 FROM eclipse-temurin:21-jdk-alpine
 WORKDIR /app
+RUN apk add --no-cache ffmpeg
 RUN mkdir -p /app/videos
 #Skopiowanie wyniku buildera
 COPY --from=builder /app/target/*.jar app.jar

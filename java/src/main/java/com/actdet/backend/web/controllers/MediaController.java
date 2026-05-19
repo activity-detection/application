@@ -47,10 +47,37 @@ public class MediaController {
                 .body(resource);
     }
 
-    @GetMapping(value = "/sequences/{originId}/manifest.m3u8", produces = "application/x-mpegURL")
-    public ResponseEntity<String> getSequenceManifest(@PathVariable String originId) throws IOException {
-        String manifest = videoService.getHlsManifestForSequence(originId);
-        return ResponseEntity.ok(manifest);
+    @GetMapping(value = "/{fileIdentifier}/manifest.mpd", produces = "application/dash+xml")
+    public ResponseEntity<String> getVideoDashManifest(@PathVariable String fileIdentifier) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.valueOf("application/dash+xml"))
+                .body(videoService.getDashManifestForVideo(fileIdentifier));
+    }
+
+    @GetMapping(value = "/sequences/{originId}/manifest.mpd", produces = "application/dash+xml")
+    public ResponseEntity<String> getSequenceManifest(@PathVariable String originId) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.valueOf("application/dash+xml"))
+                .body(videoService.getDashManifestForSequence(originId));
+    }
+
+    @GetMapping(value = "/{fileIdentifier}/dash/{assetPath:.+}")
+    public ResponseEntity<?> getVideoDashAsset(@PathVariable String fileIdentifier,
+                                               @PathVariable String assetPath) {
+        var resource = videoService.getDashAssetForVideo(fileIdentifier, assetPath);
+        return ResponseEntity.ok()
+                .contentType(MediaTypeFactory.getMediaType(resource).orElse(MediaType.APPLICATION_OCTET_STREAM))
+                .body(resource);
+    }
+
+    @GetMapping(value = "/sequences/{originId}/dash/{videoId}/{assetPath:.+}")
+    public ResponseEntity<?> getSequenceDashAsset(@PathVariable String originId,
+                                                  @PathVariable String videoId,
+                                                  @PathVariable String assetPath) {
+        var resource = videoService.getDashAssetForSequence(originId, videoId, assetPath);
+        return ResponseEntity.ok()
+                .contentType(MediaTypeFactory.getMediaType(resource).orElse(MediaType.APPLICATION_OCTET_STREAM))
+                .body(resource);
     }
 
     @DeleteMapping("/{fileIdentifier}")

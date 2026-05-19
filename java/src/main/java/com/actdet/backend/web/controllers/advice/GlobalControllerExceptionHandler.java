@@ -11,12 +11,24 @@ import java.io.IOException;
 
 @ControllerAdvice
 public class GlobalControllerExceptionHandler {
-
     @Value("${activity-detector.controllers.show-error-details-in-response:false}")
     private boolean showErrorDetails;
 
-    private String getBody(Exception ex){
-        return showErrorDetails ? String.format("%s: %s", ex.getClass().getSimpleName(), ex.getMessage()) : null;
+    private String getBody(Exception ex) {
+        if (!showErrorDetails) {
+            return null;
+        }
+
+        StringBuilder body = new StringBuilder(ex.getClass().getSimpleName());
+        if (ex.getMessage() != null && !ex.getMessage().isBlank()) {
+            body.append(": ").append(ex.getMessage());
+        }
+
+        Throwable cause = ex.getCause();
+        if (cause != null && cause.getMessage() != null && !cause.getMessage().isBlank()) {
+            body.append("; cause=").append(cause.getClass().getSimpleName()).append(": ").append(cause.getMessage());
+        }
+        return body.toString();
     }
 
 
@@ -26,7 +38,7 @@ public class GlobalControllerExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(getBody(ex));
     }
 
-    @ExceptionHandler({IOException.class, FileSavingException.class})
+    @ExceptionHandler({IOException.class, FileSavingException.class, IllegalStateException.class})
     public ResponseEntity<?> handleIntervalServerError(Exception ex){
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(getBody(ex));
     }
