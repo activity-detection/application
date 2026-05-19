@@ -1,26 +1,21 @@
 import { FlatCompat } from "@eslint/eslintrc";
 import { defineConfig, globalIgnores } from "eslint/config";
 import js from "@eslint/js";
-import checkFile from "eslint-plugin-check-file"
+import checkFile from "eslint-plugin-check-file";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 import tailwind from "eslint-plugin-tailwindcss";
-import eslintConfigPrettier from 'eslint-config-prettier'
+import eslintConfigPrettier from "eslint-config-prettier";
 
 const compat = new FlatCompat({
   baseDirectory: import.meta.dirname,
   recommendedConfig: js.configs.recommended,
-})
+});
 
 const eslintConfig = defineConfig([
   // 1. Global Ignores
-  globalIgnores([
-    ".next/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts",
-  ]),
-  
+  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
+
   // 2. Base Recommended Configs
   ...nextVitals,
   ...nextTs,
@@ -44,22 +39,16 @@ const eslintConfig = defineConfig([
       },
     },
   }),
-  
+
   // 4. Main rules
   {
-    files: ['**/*.{js,jsx,ts,tsx}'],
+    files: ["**/*.{js,jsx,ts,tsx}"],
     settings: {
       tailwindcss: {
-        callees: ["classnames", 'clsx', "ctl", "cva", "cn"],
+        callees: ["classnames", "clsx", "ctl", "cva", "cn"],
         config: {},
-        cssFiles: [
-          "**/*.css",
-          "!**/node_modules",
-          "!**/.*",
-          "!**/dist",
-          "!**/build",
-        ]
-      }
+        cssFiles: ["**/*.css", "!**/node_modules", "!**/.*", "!**/dist", "!**/build"],
+      },
     },
     rules: {
       "@next/next/no-img-element": "off",
@@ -83,31 +72,19 @@ const eslintConfig = defineConfig([
       "import/order": [
         "error",
         {
-          groups: [
-            "builtin",
-            "external",
-            "internal",
-            "parent",
-            "sibling",
-            "index",
-            "object",
-          ],
+          groups: ["builtin", "external", "internal", "parent", "sibling", "index", "object"],
           "newlines-between": "always",
           alphabetize: { order: "asc", caseInsensitive: true },
         },
       ],
 
-      // Enforce imports from @ alias (src). Disallow relative imports and bare "src/*" imports — prefer "@/..."
+      // Enforce imports from @ alias (src). Disallow bare "src/*" imports — prefer "@/...". Allow same-directory imports like './globals.css'.
       "import/no-relative-parent-imports": "error",
       "no-restricted-imports": [
         "error",
         {
-          "patterns": [
-            "./*",
-            "../*",
-            "src/*"
-          ]
-        }
+          patterns: ["src/*"],
+        },
       ],
 
       // Architectural boundaries (Bulletproof React core)
@@ -188,7 +165,7 @@ const eslintConfig = defineConfig([
       ],
     },
   },
-  eslintConfigPrettier
+  eslintConfigPrettier,
 ]);
 
 export default eslintConfig;
