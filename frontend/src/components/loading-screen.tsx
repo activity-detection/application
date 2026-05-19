@@ -1,8 +1,8 @@
 export function LoadingScreen() {
   return (
-    <div className="w-full h-screen flex items-center justify-center bg-background">
+    <div className="bg-background flex h-screen w-full items-center justify-center">
       <svg
-        className="animate-spin h-10 w-10 text-white mr-3"
+        className="mr-3 h-10 w-10 animate-spin text-white"
         xmlns="http://www.w3.org/2000/svg"
         fill="none"
         viewBox="0 0 24 24"
@@ -22,7 +22,7 @@ export function LoadingScreen() {
         ></path>
       </svg>
 
-      <span className="text-white text-4xl font-bold">Loading...</span>
+      <span className="text-4xl font-bold text-white">Loading...</span>
     </div>
   );
 }

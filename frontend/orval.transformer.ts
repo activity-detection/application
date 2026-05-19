@@ -48,10 +48,7 @@ function resolveRef<T>(ref: string, spec: OpenApiLike): T | undefined {
   return undefined;
 }
 
-function resolveParameter(
-  parameter: unknown,
-  spec: OpenApiLike,
-): ParameterObject | undefined {
+function resolveParameter(parameter: unknown, spec: OpenApiLike): ParameterObject | undefined {
   if (!parameter || typeof parameter !== "object") {
     return undefined;
   }
@@ -106,8 +103,7 @@ function flattenPageableQuery(operation: OperationObject, spec: OpenApiLike) {
     .filter((item) => item.resolved);
 
   const pageableEntry = resolvedParameters.find(
-    ({ resolved }) =>
-      resolved?.in === "query" && resolved?.name?.toLowerCase() === "pageable",
+    ({ resolved }) => resolved?.in === "query" && resolved?.name?.toLowerCase() === "pageable",
   );
 
   if (!pageableEntry?.resolved) {

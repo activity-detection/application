@@ -1,17 +1,10 @@
 export const getApiBaseUrl = (): string => {
-  if (
-    process.env.NEXT_PUBLIC_API_BASE_URL &&
-    process.env.NEXT_PUBLIC_API_BASE_URL.trim() !== ""
-  ) {
+  if (process.env.NEXT_PUBLIC_API_BASE_URL && process.env.NEXT_PUBLIC_API_BASE_URL.trim() !== "") {
     return process.env.NEXT_PUBLIC_API_BASE_URL.replace(/\/$/, "");
   }
 
   // When running in browser, derive base from current origin and use /api prefix
-  if (
-    typeof window !== "undefined" &&
-    window.location &&
-    window.location.origin
-  ) {
+  if (typeof window !== "undefined" && window.location && window.location.origin) {
     return `${window.location.origin.replace(/\/$/, "")}/api`;
   }
 
@@ -19,10 +12,7 @@ export const getApiBaseUrl = (): string => {
   return "http://localhost:8080";
 };
 
-export const client = async <T>(
-  url: string,
-  options: RequestInit = {},
-): Promise<T> => {
+export const client = async <T>(url: string, options: RequestInit = {}): Promise<T> => {
   const baseURL = getApiBaseUrl();
 
   const method = options.method || "GET";
@@ -48,10 +38,7 @@ export const client = async <T>(
     throw new Error(`API Error: ${response.status} - ${error}`);
   }
 
-  if (
-    response.status === 204 ||
-    response.headers.get("content-length") === "0"
-  ) {
+  if (response.status === 204 || response.headers.get("content-length") === "0") {
     return null as T;
   }
 

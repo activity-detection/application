@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  formatSecondsAsClock,
-  parseIsoDurationToSeconds,
-} from "@/utils/duration";
+import { formatSecondsAsClock, parseIsoDurationToSeconds } from "@/utils/duration";
 
 describe("parseIsoDurationToSeconds", () => {
   it("parses the duration formats produced by the backend", () => {

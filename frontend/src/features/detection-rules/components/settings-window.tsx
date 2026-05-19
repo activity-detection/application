@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -10,16 +12,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
-import type { DetectionVectorDTO } from "@/models";
-import { useRules, type DetectionTemplateItem } from "@/features/detection-rules/context/detection-rules-context";
+import { SettingsDeleteConfirmation } from "@/features/detection-rules/components/settings-delete-confirmation";
 import {
   SettingsRuleCreator,
   type RuleFormData,
   type TemplateFormData,
   type VectorFormData,
 } from "@/features/detection-rules/components/settings-rule-creator";
-import { SettingsDeleteConfirmation } from "@/features/detection-rules/components/settings-delete-confirmation";
+import {
+  useRules,
+  type DetectionTemplateItem,
+} from "@/features/detection-rules/context/detection-rules-context";
+import type { DetectionVectorDTO } from "@/models";
 
 function createEmptyRule(defaultElementName = ""): RuleFormData {
   return {
@@ -99,12 +103,8 @@ export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
   } = useRules();
 
   const [editorOpen, setEditorOpen] = useState(false);
-  const [editingTemplateName, setEditingTemplateName] = useState<string | null>(
-    null,
-  );
-  const [formData, setFormData] = useState<TemplateFormData>(
-    createEmptyTemplate(),
-  );
+  const [editingTemplateName, setEditingTemplateName] = useState<string | null>(null);
+  const [formData, setFormData] = useState<TemplateFormData>(createEmptyTemplate());
 
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
@@ -167,8 +167,7 @@ export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
       if (editingTemplateName) {
         await updateTemplate({
           name: editingTemplateName,
-          new_name:
-            formData.name !== editingTemplateName ? formData.name : undefined,
+          new_name: formData.name !== editingTemplateName ? formData.name : undefined,
           vectors,
         });
       } else {
@@ -215,27 +214,19 @@ export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
     setFormData((prev) => ({
       ...prev,
       vectors: prev.vectors.map((v, i) =>
-        i === vectorIndex
-          ? { ...v, rules: v.rules.filter((_, ri) => ri !== ruleIndex) }
-          : v,
+        i === vectorIndex ? { ...v, rules: v.rules.filter((_, ri) => ri !== ruleIndex) } : v,
       ),
     }));
   };
 
-  const updateRule = (
-    vectorIndex: number,
-    ruleIndex: number,
-    updates: Partial<RuleFormData>,
-  ) => {
+  const updateRule = (vectorIndex: number, ruleIndex: number, updates: Partial<RuleFormData>) => {
     setFormData((prev) => ({
       ...prev,
       vectors: prev.vectors.map((v, i) =>
         i === vectorIndex
           ? {
               ...v,
-              rules: v.rules.map((r, ri) =>
-                ri === ruleIndex ? { ...r, ...updates } : r,
-              ),
+              rules: v.rules.map((r, ri) => (ri === ruleIndex ? { ...r, ...updates } : r)),
             }
           : v,
       ),
@@ -262,27 +253,24 @@ export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
   return (
     <>
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/40 p-4"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
         onClick={(e) => {
-          if (e.target === e.currentTarget && !editorOpen && !deleteTarget)
-            onClose();
+          if (e.target === e.currentTarget && !editorOpen && !deleteTarget) onClose();
         }}
       >
-        <Card className="w-full max-w-4xl max-h-[85vh] border-border/50 shadow-lg flex flex-col">
+        <Card className="border-border/50 flex max-h-[85vh] w-full max-w-4xl flex-col shadow-lg">
           <div className="flex items-center justify-between px-6 pt-4 pb-2">
-            <h2 className="text-xl font-semibold text-foreground">
-              Detection Rules Settings
-            </h2>
+            <h2 className="text-foreground text-xl font-semibold">Detection Rules Settings</h2>
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={handleCreate}
-                className="cursor-pointer inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm text-primary-foreground hover:bg-primary/80 transition-colors"
+                className="bg-primary text-primary-foreground hover:bg-primary/80 inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-sm transition-colors"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
-                  className="w-4 h-4"
+                  className="h-4 w-4"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
@@ -296,12 +284,12 @@ export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
               <button
                 type="button"
                 onClick={onClose}
-                className="cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+                className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
-                  className="w-5 h-5"
+                  className="h-5 w-5"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
@@ -314,85 +302,68 @@ export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
             </div>
           </div>
 
-          <CardContent className="px-6 pb-4 overflow-y-auto">
+          <CardContent className="overflow-y-auto px-6 pb-4">
             {error ? (
               <div className="mb-3 rounded-lg border border-red-900/40 bg-red-900/20 px-3 py-2 text-sm text-red-200">
                 {error}
               </div>
             ) : null}
 
-            <div className="h-124 rounded-lg border border-border/50 overflow-hidden">
+            <div className="border-border/50 h-124 overflow-hidden rounded-lg border">
               <Table>
                 <TableHeader className="bg-muted/50">
                   <TableRow className="hover:bg-muted/70 border-border/50">
                     <TableHead className="p-4 font-bold">Name</TableHead>
-                    <TableHead className="p-4 font-bold w-24 text-center">
-                      Vectors
-                    </TableHead>
+                    <TableHead className="w-24 p-4 text-center font-bold">Vectors</TableHead>
                     <TableHead className="p-4 font-bold">Rules</TableHead>
-                    <TableHead className="p-4 font-bold w-24 text-center">
-                      Actions
-                    </TableHead>
+                    <TableHead className="w-24 p-4 text-center font-bold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {(() => {
                     if (loading) {
-                      return Array.from({ length: totalRows }).map(
-                        (_, index) => (
-                          <TableRow
-                            key={`skeleton-${index}`}
-                            className="border-border/50 h-14.25"
-                          >
-                            <TableCell className="p-4">
-                              <Skeleton className="h-5 w-32" />
-                            </TableCell>
-                            <TableCell className="p-4">
-                              <Skeleton className="h-5 w-8 mx-auto" />
-                            </TableCell>
-                            <TableCell className="p-4">
-                              <Skeleton className="h-5 w-48" />
-                            </TableCell>
-                            <TableCell className="p-4">
-                              <Skeleton className="h-5 w-16 mx-auto" />
-                            </TableCell>
-                          </TableRow>
-                        ),
-                      );
+                      return Array.from({ length: totalRows }).map((_, index) => (
+                        <TableRow key={`skeleton-${index}`} className="border-border/50 h-14.25">
+                          <TableCell className="p-4">
+                            <Skeleton className="h-5 w-32" />
+                          </TableCell>
+                          <TableCell className="p-4">
+                            <Skeleton className="mx-auto h-5 w-8" />
+                          </TableCell>
+                          <TableCell className="p-4">
+                            <Skeleton className="h-5 w-48" />
+                          </TableCell>
+                          <TableCell className="p-4">
+                            <Skeleton className="mx-auto h-5 w-16" />
+                          </TableCell>
+                        </TableRow>
+                      ));
                     }
 
                     if (templates.length === 0) {
                       return (
                         <>
                           <TableRow className="hover:bg-muted/30 border-border/50 h-14.25">
-                            <TableCell
-                              colSpan={4}
-                              className="text-center text-muted-foreground"
-                            >
+                            <TableCell colSpan={4} className="text-muted-foreground text-center">
                               No detection templates found
                             </TableCell>
                           </TableRow>
-                          {Array.from({ length: totalRows - 1 }).map(
-                            (_, index) => (
-                              <TableRow
-                                key={`empty-no-data-${index}`}
-                                className="border-border/50 h-14.25"
-                              >
-                                <TableCell className="p-4" />
-                                <TableCell className="p-4" />
-                                <TableCell className="p-4" />
-                                <TableCell className="p-4" />
-                              </TableRow>
-                            ),
-                          )}
+                          {Array.from({ length: totalRows - 1 }).map((_, index) => (
+                            <TableRow
+                              key={`empty-no-data-${index}`}
+                              className="border-border/50 h-14.25"
+                            >
+                              <TableCell className="p-4" />
+                              <TableCell className="p-4" />
+                              <TableCell className="p-4" />
+                              <TableCell className="p-4" />
+                            </TableRow>
+                          ))}
                         </>
                       );
                     }
 
-                    const emptyRowsCount = Math.max(
-                      0,
-                      totalRows - templates.length,
-                    );
+                    const emptyRowsCount = Math.max(0, totalRows - templates.length);
 
                     return (
                       <>
@@ -401,13 +372,13 @@ export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
                             key={template.name}
                             className="hover:bg-muted/20 border-border/50 h-14.25"
                           >
-                            <TableCell className="p-4 font-medium text-sm">
+                            <TableCell className="p-4 text-sm font-medium">
                               {template.name}
                             </TableCell>
-                            <TableCell className="p-4 text-sm text-center text-muted-foreground">
+                            <TableCell className="text-muted-foreground p-4 text-center text-sm">
                               {template.vector_count}
                             </TableCell>
-                            <TableCell className="p-4 text-sm text-muted-foreground truncate max-w-xs">
+                            <TableCell className="text-muted-foreground max-w-xs truncate p-4 text-sm">
                               {summarizeRules(template)}
                             </TableCell>
                             <TableCell className="p-4">
@@ -415,13 +386,13 @@ export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
                                 <button
                                   type="button"
                                   onClick={() => handleEdit(template)}
-                                  className="cursor-pointer p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                                  className="text-muted-foreground hover:text-foreground hover:bg-muted/60 cursor-pointer rounded p-1.5 transition-colors"
                                   aria-label={`Edit ${template.name}`}
                                 >
                                   <svg
                                     xmlns="http://www.w3.org/2000/svg"
                                     viewBox="0 0 24 24"
-                                    className="w-4 h-4"
+                                    className="h-4 w-4"
                                     fill="none"
                                     stroke="currentColor"
                                     strokeWidth="2"
@@ -434,13 +405,13 @@ export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
                                 <button
                                   type="button"
                                   onClick={() => setDeleteTarget(template.name)}
-                                  className="cursor-pointer p-1.5 rounded text-muted-foreground hover:text-red-400 hover:bg-red-900/20 transition-colors"
+                                  className="text-muted-foreground cursor-pointer rounded p-1.5 transition-colors hover:bg-red-900/20 hover:text-red-400"
                                   aria-label={`Delete ${template.name}`}
                                 >
                                   <svg
                                     xmlns="http://www.w3.org/2000/svg"
                                     viewBox="0 0 24 24"
-                                    className="w-4 h-4"
+                                    className="h-4 w-4"
                                     fill="none"
                                     stroke="currentColor"
                                     strokeWidth="2"
@@ -454,19 +425,14 @@ export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
                             </TableCell>
                           </TableRow>
                         ))}
-                        {Array.from({ length: emptyRowsCount }).map(
-                          (_, index) => (
-                            <TableRow
-                              key={`empty-${index}`}
-                              className="border-border/50 h-14.25"
-                            >
-                              <TableCell className="p-4" />
-                              <TableCell className="p-4" />
-                              <TableCell className="p-4" />
-                              <TableCell className="p-4" />
-                            </TableRow>
-                          ),
-                        )}
+                        {Array.from({ length: emptyRowsCount }).map((_, index) => (
+                          <TableRow key={`empty-${index}`} className="border-border/50 h-14.25">
+                            <TableCell className="p-4" />
+                            <TableCell className="p-4" />
+                            <TableCell className="p-4" />
+                            <TableCell className="p-4" />
+                          </TableRow>
+                        ))}
                       </>
                     );
                   })()}
@@ -475,24 +441,21 @@ export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
             </div>
 
             {/* Pagination */}
-            <div className="mt-6 flex justify-between items-center">
-              <div className="text-sm text-muted-foreground">
+            <div className="mt-6 flex items-center justify-between">
+              <div className="text-muted-foreground text-sm">
                 Showing {templates.length} of {totalElements} templates
               </div>
 
-              <nav
-                className="flex items-center gap-x-1"
-                aria-label="Pagination"
-              >
+              <nav className="flex items-center gap-x-1" aria-label="Pagination">
                 <button
                   type="button"
                   onClick={handlePrevious}
                   disabled={loading || pageNumber === 0}
-                  className="cursor-pointer min-h-9.5 min-w-9.5 py-2 px-2.5 inline-flex justify-center items-center gap-x-2 text-sm rounded-lg text-gray-800 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700 focus:outline-hidden focus:bg-gray-100 dark:focus:bg-neutral-700 disabled:opacity-50 disabled:pointer-events-none"
+                  className="inline-flex min-h-9.5 min-w-9.5 cursor-pointer items-center justify-center gap-x-2 rounded-lg px-2.5 py-2 text-sm text-gray-800 hover:bg-gray-100 focus:bg-gray-100 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50 dark:text-neutral-200 dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
                   aria-label="Previous"
                 >
                   <svg
-                    className="shrink-0 size-3.5"
+                    className="size-3.5 shrink-0"
                     xmlns="http://www.w3.org/2000/svg"
                     width="24"
                     height="24"
@@ -508,13 +471,13 @@ export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
                   <span className="sr-only">Previous</span>
                 </button>
                 <div className="flex items-center gap-x-1">
-                  <span className="min-h-9.5 min-w-9.5 flex justify-center items-center border border-gray-200 dark:border-neutral-700 text-gray-800 dark:text-neutral-200 py-2 px-3 text-sm rounded-lg focus:outline-hidden disabled:opacity-50 disabled:pointer-events-none">
+                  <span className="flex min-h-9.5 min-w-9.5 items-center justify-center rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-200">
                     {pageNumber + 1}
                   </span>
-                  <span className="min-h-9.5 flex justify-center items-center text-gray-500 dark:text-neutral-400 py-2 px-1.5 text-sm">
+                  <span className="flex min-h-9.5 items-center justify-center px-1.5 py-2 text-sm text-gray-500 dark:text-neutral-400">
                     of
                   </span>
-                  <span className="min-h-9.5 flex justify-center items-center text-gray-500 dark:text-neutral-400 py-2 px-1.5 text-sm">
+                  <span className="flex min-h-9.5 items-center justify-center px-1.5 py-2 text-sm text-gray-500 dark:text-neutral-400">
                     {totalPages}
                   </span>
                 </div>
@@ -522,12 +485,12 @@ export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
                   type="button"
                   onClick={handleNext}
                   disabled={loading || pageNumber >= totalPages - 1}
-                  className="cursor-pointer min-h-9.5 min-w-9.5 py-2 px-2.5 inline-flex justify-center items-center gap-x-2 text-sm rounded-lg text-gray-800 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700 focus:outline-hidden focus:bg-gray-100 dark:focus:bg-neutral-700 disabled:opacity-50 disabled:pointer-events-none"
+                  className="inline-flex min-h-9.5 min-w-9.5 cursor-pointer items-center justify-center gap-x-2 rounded-lg px-2.5 py-2 text-sm text-gray-800 hover:bg-gray-100 focus:bg-gray-100 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50 dark:text-neutral-200 dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
                   aria-label="Next"
                 >
                   <span className="sr-only">Next</span>
                   <svg
-                    className="shrink-0 size-3.5"
+                    className="size-3.5 shrink-0"
                     xmlns="http://www.w3.org/2000/svg"
                     width="24"
                     height="24"
@@ -555,9 +518,7 @@ export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
           elementsLoading={elementsLoading}
           saving={saving}
           isEdit={editingTemplateName !== null}
-          onFormChange={(updates) =>
-            setFormData((prev) => ({ ...prev, ...updates }))
-          }
+          onFormChange={(updates) => setFormData((prev) => ({ ...prev, ...updates }))}
           onAddVector={addVector}
           onRemoveVector={removeVector}
           onAddRule={addRule}

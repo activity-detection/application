@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+
 import { Card, CardContent } from "@/components/ui/card";
 
 interface DeleteVideosComponentProps {
@@ -46,10 +47,7 @@ export function DeleteVideosComponent({
     };
   }, [open, onClose]);
 
-  const canConfirm = useMemo(
-    () => confirmationText.trim() === "DELETE",
-    [confirmationText],
-  );
+  const canConfirm = useMemo(() => confirmationText.trim() === "DELETE", [confirmationText]);
 
   if (!open) {
     return null;
@@ -57,22 +55,16 @@ export function DeleteVideosComponent({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <Card className="w-full max-w-md border-border/50 shadow-lg">
+      <Card className="border-border/50 w-full max-w-md shadow-lg">
         <CardContent className="space-y-4 px-4 py-1">
           <div className="space-y-1">
-            <h2 className="text-lg font-semibold text-foreground">
-              Confirmation
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete the ({selectedCount}) selected
-              videos?
+            <h2 className="text-foreground text-lg font-semibold">Confirmation</h2>
+            <p className="text-muted-foreground text-sm">
+              Are you sure you want to delete the ({selectedCount}) selected videos?
             </p>
-            <p className="text-sm text-muted-foreground">
-              Type{" "}
-              <span className="font-semibold text-foreground">
-                &quot;DELETE&quot;
-              </span>{" "}
-              to confirm the deletion:
+            <p className="text-muted-foreground text-sm">
+              Type <span className="text-foreground font-semibold">&quot;DELETE&quot;</span> to
+              confirm the deletion:
             </p>
           </div>
 
@@ -81,7 +73,7 @@ export function DeleteVideosComponent({
             value={confirmationText}
             onChange={(event) => setConfirmationText(event.target.value)}
             placeholder="DELETE"
-            className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus-visible:border-ring"
+            className="border-border bg-background focus-visible:border-ring h-10 w-full rounded-lg border px-3 text-sm outline-none"
             aria-label="Type DELETE to confirm"
           />
 
@@ -89,7 +81,7 @@ export function DeleteVideosComponent({
             <button
               type="button"
               onClick={handleClose}
-              className="inline-flex h-10 items-center rounded-lg border border-border bg-muted px-4 text-sm text-muted-foreground hover:bg-muted/80 cursor-pointer"
+              className="border-border bg-muted text-muted-foreground hover:bg-muted/80 inline-flex h-10 cursor-pointer items-center rounded-lg border px-4 text-sm"
             >
               No
             </button>
@@ -97,7 +89,7 @@ export function DeleteVideosComponent({
               type="button"
               disabled={!canConfirm}
               onClick={handleConfirm}
-              className="inline-flex h-10 items-center rounded-lg border bg-red-900/70 px-4 text-sm text-foreground hover:bg-red-900/80 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+              className="text-foreground inline-flex h-10 cursor-pointer items-center rounded-lg border bg-red-900/70 px-4 text-sm hover:bg-red-900/80 disabled:pointer-events-none disabled:opacity-50"
             >
               Yes
             </button>

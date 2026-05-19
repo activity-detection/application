@@ -1,13 +1,7 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+
 import {
   addDetectionTemplate,
   deleteDetectionTemplate,
@@ -60,10 +54,7 @@ type RulesContextValue = {
   totalElements: number;
   loadRulesPage: (page: number) => Promise<void>;
   loadDetectedElements: () => Promise<void>;
-  createTemplate: (payload: {
-    name: string;
-    vectors: DetectionVectorDTO[];
-  }) => Promise<void>;
+  createTemplate: (payload: { name: string; vectors: DetectionVectorDTO[] }) => Promise<void>;
   updateTemplate: (payload: {
     name: string;
     new_name?: string;
@@ -142,9 +133,7 @@ export function RulesProvider({ children }: { children: ReactNode }) {
       setDetectedElements(Array.from(new Set(nextElements)));
     } catch (err) {
       setDetectedElements([]);
-      setError(
-        err instanceof Error ? err.message : "Error loading detected elements",
-      );
+      setError(err instanceof Error ? err.message : "Error loading detected elements");
     } finally {
       setElementsLoading(false);
     }
@@ -188,9 +177,7 @@ export function RulesProvider({ children }: { children: ReactNode }) {
         await addDetectionTemplate(payload);
         await loadRulesPage(pageNumber);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Error creating template",
-        );
+        setError(err instanceof Error ? err.message : "Error creating template");
         throw err;
       } finally {
         setSaving(false);
@@ -200,20 +187,14 @@ export function RulesProvider({ children }: { children: ReactNode }) {
   );
 
   const updateTemplate = useCallback(
-    async (payload: {
-      name: string;
-      new_name?: string;
-      vectors: DetectionVectorDTO[];
-    }) => {
+    async (payload: { name: string; new_name?: string; vectors: DetectionVectorDTO[] }) => {
       try {
         setSaving(true);
         setError(null);
         await editDetectionTemplate(payload);
         await loadRulesPage(pageNumber);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Error updating template",
-        );
+        setError(err instanceof Error ? err.message : "Error updating template");
         throw err;
       } finally {
         setSaving(false);
@@ -229,15 +210,10 @@ export function RulesProvider({ children }: { children: ReactNode }) {
         setError(null);
         await deleteDetectionTemplate({ name });
 
-        const nextPage =
-          templates.length === 1 && pageNumber > 0
-            ? pageNumber - 1
-            : pageNumber;
+        const nextPage = templates.length === 1 && pageNumber > 0 ? pageNumber - 1 : pageNumber;
         await loadRulesPage(nextPage);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Error deleting template",
-        );
+        setError(err instanceof Error ? err.message : "Error deleting template");
         throw err;
       } finally {
         setSaving(false);
@@ -283,9 +259,7 @@ export function RulesProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return (
-    <RulesContext.Provider value={value}>{children}</RulesContext.Provider>
-  );
+  return <RulesContext.Provider value={value}>{children}</RulesContext.Provider>;
 }
 
 export function useRules() {

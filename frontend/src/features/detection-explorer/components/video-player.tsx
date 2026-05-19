@@ -2,24 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import videojs from "video.js";
-import { cn } from "@/lib/utils";
+
 import { Card, CardContent } from "@/components/ui/card";
-import type {
-  Details,
-  VideoSequence,
-  VideoSequencePage,
-  VideoSequencePart,
-} from "@/models";
+import { getApiBaseUrl } from "@/lib/client";
 import {
   getVideoInfo,
   getVideoSequenceInfo,
   getVideoSequences,
 } from "@/lib/endpoints/media-controller/media-controller";
-import { getApiBaseUrl } from "@/lib/client";
-import {
-  formatSecondsAsClock,
-  parseIsoDurationToSeconds,
-} from "@/utils/duration";
+import { cn } from "@/lib/utils";
+import type { Details, VideoSequence, VideoSequencePage, VideoSequencePart } from "@/models";
+import { formatSecondsAsClock, parseIsoDurationToSeconds } from "@/utils/duration";
 
 interface VideoPlayerProps {
   videoId: string | null;
@@ -104,11 +97,7 @@ function isVideoSequence(value: unknown): value is VideoSequence {
 }
 
 function isVideoSequencePage(value: unknown): value is VideoSequencePage {
-  if (
-    !isRecord(value) ||
-    !Array.isArray(value.content) ||
-    !isRecord(value.page)
-  ) {
+  if (!isRecord(value) || !Array.isArray(value.content) || !isRecord(value.page)) {
     return false;
   }
   const page = value.page;
@@ -123,9 +112,7 @@ function isVideoSequencePage(value: unknown): value is VideoSequencePage {
   return value.content.every((sequence) => isVideoSequence(sequence));
 }
 
-async function resolveVideoSequence(
-  videoId: string,
-): Promise<VideoSequence | null> {
+async function resolveVideoSequence(videoId: string): Promise<VideoSequence | null> {
   const pageSize = 50;
   let currentPage = 0;
   let totalPages = 1;
@@ -144,8 +131,7 @@ async function resolveVideoSequence(
 
     const found = pagePayload.content.find(
       (sequence) =>
-        sequence.origin_id === videoId ||
-        sequence.parts.some((part) => part.id === videoId),
+        sequence.origin_id === videoId || sequence.parts.some((part) => part.id === videoId),
     );
     if (found) {
       return found;
@@ -177,12 +163,9 @@ function buildSourceCandidatesForPath(
     candidates.push({ src, mimeType });
   };
 
-  const mimeOrder = [
-    preferredMime,
-    "video/mp4",
-    "video/quicktime",
-    undefined,
-  ].filter((v, i, a) => v !== undefined);
+  const mimeOrder = [preferredMime, "video/mp4", "video/quicktime", undefined].filter(
+    (v, i, a) => v !== undefined,
+  );
 
   for (const s of srcs) {
     for (const mime of mimeOrder) {
@@ -202,9 +185,7 @@ export function VideoPlayer({
   onClose,
 }: VideoPlayerProps) {
   const [assetMeta, setAssetMeta] = useState<VideoAssetMeta | null>(null);
-  const [sourceCandidates, setSourceCandidates] = useState<
-    VideoSourceCandidate[]
-  >([]);
+  const [sourceCandidates, setSourceCandidates] = useState<VideoSourceCandidate[]>([]);
   const [activeSourceIndex, setActiveSourceIndex] = useState(0);
   const [sequenceLoading, setSequenceLoading] = useState(false);
   const [sequenceError, setSequenceError] = useState<string | null>(null);
@@ -243,17 +224,13 @@ export function VideoPlayer({
     const loadVideo = async () => {
       try {
         const resolvedSequence = await resolveVideoSequence(videoId);
-        const hasSequenceConcat =
-          !!resolvedSequence && resolvedSequence.parts.length > 1;
+        const hasSequenceConcat = !!resolvedSequence && resolvedSequence.parts.length > 1;
         const selectedPart =
-          resolvedSequence?.parts.find((part) => part.id === videoId) ??
-          resolvedSequence?.parts[0];
+          resolvedSequence?.parts.find((part) => part.id === videoId) ?? resolvedSequence?.parts[0];
         const sequenceOriginId = resolvedSequence?.origin_id ?? videoId;
 
         const sourceName = selectedPart?.name || videoName || "Video";
-        const preferredMime = normalizeMimeType(
-          guessMimeTypeFromName(sourceName),
-        );
+        const preferredMime = normalizeMimeType(guessMimeTypeFromName(sourceName));
 
         const primaryPath = hasSequenceConcat
           ? `/videos/sequences/${sequenceOriginId}/concat`
@@ -261,22 +238,18 @@ export function VideoPlayer({
         const fallbackPath = `/videos/${selectedPart?.id ?? videoId}`;
         const candidates = [
           ...buildSourceCandidatesForPath(primaryPath, preferredMime),
-          ...(hasSequenceConcat
-            ? buildSourceCandidatesForPath(fallbackPath, preferredMime)
-            : []),
+          ...(hasSequenceConcat ? buildSourceCandidatesForPath(fallbackPath, preferredMime) : []),
         ];
 
         const descriptionSource = hasSequenceConcat
           ? resolvedSequence?.parts.find(
-              (part) =>
-                typeof part.description === "string" && part.description.trim(),
+              (part) => typeof part.description === "string" && part.description.trim(),
             )?.description
           : selectedPart?.description;
 
         const meta: VideoAssetMeta = {
           name: sourceName,
-          description:
-            descriptionSource ?? videoDescription ?? "No description",
+          description: descriptionSource ?? videoDescription ?? "No description",
           uploadDate:
             (hasSequenceConcat
               ? resolvedSequence?.sequence_upload_date
@@ -302,9 +275,7 @@ export function VideoPlayer({
         if (!isMounted) {
           return;
         }
-        setSequenceError(
-          error instanceof Error ? error.message : "Failed to load video",
-        );
+        setSequenceError(error instanceof Error ? error.message : "Failed to load video");
         setAssetMeta(null);
         setSourceCandidates([]);
         setVideoDetails(null);
@@ -330,30 +301,21 @@ export function VideoPlayer({
 
     return videoDetails.detections
       .map((detection, index) => {
-        const fromSeconds = parseIsoDurationToSeconds(
-          detection.timestamp?.from,
-        );
+        const fromSeconds = parseIsoDurationToSeconds(detection.timestamp?.from);
         const toSeconds = parseIsoDurationToSeconds(detection.timestamp?.to);
-        if (
-          fromSeconds === null ||
-          !Number.isFinite(fromSeconds) ||
-          fromSeconds < 0
-        ) {
+        if (fromSeconds === null || !Number.isFinite(fromSeconds) || fromSeconds < 0) {
           return null;
         }
 
         const label =
-          detection.objects
-            .map((object) => `${object.name} (${object.count ?? 1})`)
-            .join(", ") || "Detection";
+          detection.objects.map((object) => `${object.name} (${object.count ?? 1})`).join(", ") ||
+          "Detection";
 
         return {
           key: `detection-${index}-${detection.timestamp?.from ?? ""}`,
           fromSeconds,
           toSeconds:
-            toSeconds !== null &&
-            Number.isFinite(toSeconds) &&
-            toSeconds >= fromSeconds
+            toSeconds !== null && Number.isFinite(toSeconds) && toSeconds >= fromSeconds
               ? toSeconds
               : null,
           label,
@@ -382,9 +344,7 @@ export function VideoPlayer({
       return;
     }
 
-    const progressHolder = root.querySelector(
-      ".vjs-progress-holder",
-    ) as HTMLElement | null;
+    const progressHolder = root.querySelector(".vjs-progress-holder") as HTMLElement | null;
     if (!progressHolder) {
       if (markerRenderRetryCountRef.current < 5) {
         markerRenderRetryCountRef.current += 1;
@@ -403,11 +363,7 @@ export function VideoPlayer({
       });
 
     const duration = player.duration();
-    if (
-      typeof duration !== "number" ||
-      !Number.isFinite(duration) ||
-      duration <= 0
-    ) {
+    if (typeof duration !== "number" || !Number.isFinite(duration) || duration <= 0) {
       return;
     }
 
@@ -422,9 +378,7 @@ export function VideoPlayer({
       const hasRange = rangeWidthPercent > 0.2;
       const element = document.createElement("button");
       element.type = "button";
-      element.className = hasRange
-        ? "vjs-detection-marker-range"
-        : "vjs-detection-marker";
+      element.className = hasRange ? "vjs-detection-marker-range" : "vjs-detection-marker";
       const tooltip = hasRange
         ? `${formatSecondsAsClock(clampedFrom)} -> ${formatSecondsAsClock(clampedTo)} — ${marker.label}`
         : `${formatSecondsAsClock(clampedFrom)} — ${marker.label}`;
@@ -544,71 +498,61 @@ export function VideoPlayer({
   if (!videoId) return null;
 
   const currentName = assetMeta?.name || videoName || "Video";
-  const currentDescription =
-    assetMeta?.description || videoDescription || "No description";
+  const currentDescription = assetMeta?.description || videoDescription || "No description";
   const currentUploadDate = assetMeta?.uploadDate || uploadDate || "—";
   const eventsCount = videoDetails?.events?.length ?? 0;
   const detectionsCount = videoDetails?.detections?.length ?? 0;
 
   return (
     <Card
-      className={cn(
-        "h-full border-border/50 shadow-sm bg-background flex flex-col",
-        className,
-      )}
+      className={cn("border-border/50 bg-background flex h-full flex-col shadow-sm", className)}
     >
-      <div className="flex justify-between items-center p-4 pt-0 border-b border-border/50 gap-3">
-        <h2 className="text-lg font-semibold text-foreground truncate">
+      <div className="border-border/50 flex items-center justify-between gap-3 border-b p-4 pt-0">
+        <h2 className="text-foreground truncate text-lg font-semibold">
           <span className="sr-only">Selected video:</span>
           {currentName}
         </h2>
         <button
           onClick={onClose}
-          className="cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+          className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
           aria-label="Close preview"
         >
           <svg
-            className="w-5 h-5"
+            className="h-5 w-5"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
             strokeWidth={2}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M6 18L18 6M6 6l12 12"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
-      <CardContent className="p-4 space-y-4">
-        <div className="aspect-video rounded-lg bg-black overflow-hidden relative">
-          <div ref={playerHostRef} data-vjs-player className="w-full h-full" />
+      <CardContent className="space-y-4 p-4">
+        <div className="relative aspect-video overflow-hidden rounded-lg bg-black">
+          <div ref={playerHostRef} data-vjs-player className="h-full w-full" />
           {sequenceLoading ? (
-            <div className="absolute inset-0 flex items-center justify-center text-muted-foreground bg-black/60">
+            <div className="text-muted-foreground absolute inset-0 flex items-center justify-center bg-black/60">
               Loading video...
             </div>
           ) : sequenceError ? (
-            <div className="absolute inset-0 flex items-center justify-center text-muted-foreground bg-black/60">
+            <div className="text-muted-foreground absolute inset-0 flex items-center justify-center bg-black/60">
               Failed to load video
             </div>
           ) : sourceCandidates.length === 0 ? (
-            <div className="absolute inset-0 flex items-center justify-center text-muted-foreground bg-black/60">
+            <div className="text-muted-foreground absolute inset-0 flex items-center justify-center bg-black/60">
               Failed to load video
             </div>
           ) : null}
         </div>
 
         <div className="space-y-2 text-sm">
-          <h3 className="font-semibold text-foreground">Description</h3>
-          <p className="text-muted-foreground wrap-break-word">
-            {currentDescription}
-          </p>
+          <h3 className="text-foreground font-semibold">Description</h3>
+          <p className="text-muted-foreground wrap-break-word">{currentDescription}</p>
 
-          <details className="rounded-md border border-border/50 bg-muted/20 p-3">
-            <summary className="cursor-pointer select-none font-semibold text-foreground">
+          <details className="border-border/50 bg-muted/20 rounded-md border p-3">
+            <summary className="text-foreground cursor-pointer font-semibold select-none">
               Events ({eventsCount})
             </summary>
             <div className="mt-2">
@@ -619,17 +563,12 @@ export function VideoPlayer({
                   {videoDetails.events.map((event, index) => (
                     <div
                       key={`event-${event.label}-${event.timestamp?.from ?? ""}-${index}`}
-                      className="rounded-md border border-border/50 bg-muted/30 p-3"
+                      className="border-border/50 bg-muted/30 rounded-md border p-3"
                     >
-                      <div className="text-xs text-foreground">
-                        Label: {event.label}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-foreground text-xs">Label: {event.label}</div>
+                      <div className="text-muted-foreground text-xs">
                         Timestamp:{" "}
-                        {formatTimestampRange(
-                          event.timestamp?.from,
-                          event.timestamp?.to,
-                        )}
+                        {formatTimestampRange(event.timestamp?.from, event.timestamp?.to)}
                       </div>
                     </div>
                   ))}
@@ -640,8 +579,8 @@ export function VideoPlayer({
             </div>
           </details>
 
-          <details className="rounded-md border border-border/50 bg-muted/20 p-3">
-            <summary className="cursor-pointer select-none font-semibold text-foreground">
+          <details className="border-border/50 bg-muted/20 rounded-md border p-3">
+            <summary className="text-foreground cursor-pointer font-semibold select-none">
               Detections ({detectionsCount})
             </summary>
             <div className="mt-2">
@@ -652,21 +591,16 @@ export function VideoPlayer({
                   {videoDetails.detections.map((detection, index) => (
                     <div
                       key={`detection-${detection.timestamp?.from ?? ""}-${index}`}
-                      className="rounded-md border border-border/50 bg-muted/30 p-3"
+                      className="border-border/50 bg-muted/30 rounded-md border p-3"
                     >
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-muted-foreground text-xs">
                         Timestamp:{" "}
-                        {formatTimestampRange(
-                          detection.timestamp?.from,
-                          detection.timestamp?.to,
-                        )}
+                        {formatTimestampRange(detection.timestamp?.from, detection.timestamp?.to)}
                       </div>
-                      <div className="mt-1 text-xs text-foreground wrap-break-word">
+                      <div className="text-foreground mt-1 text-xs wrap-break-word">
                         Objects:{" "}
                         {detection.objects
-                          .map(
-                            (object) => `${object.name} (${object.count ?? 1})`,
-                          )
+                          .map((object) => `${object.name} (${object.count ?? 1})`)
                           .join(", ") || "—"}
                       </div>
                     </div>
@@ -678,9 +612,7 @@ export function VideoPlayer({
             </div>
           </details>
 
-          <div className="pt-2 text-xs text-muted-foreground">
-            Uploaded: {currentUploadDate}
-          </div>
+          <div className="text-muted-foreground pt-2 text-xs">Uploaded: {currentUploadDate}</div>
         </div>
       </CardContent>
     </Card>

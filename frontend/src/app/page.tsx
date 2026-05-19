@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect } from "react";
-import { RulesProvider } from "@/features/detection-rules/context/detection-rules-context";
+
 import { LoadingScreen } from "@/components/loading-screen";
 import { VideoList } from "@/features/detection-explorer/components/video-list";
 import {
   DetectionExplorerProvider,
   useDetectionExplorerContext,
 } from "@/features/detection-explorer/context/detection-explorer-context";
+import { RulesProvider } from "@/features/detection-rules/context/detection-rules-context";
 
 function PageContent() {
-  const { apiLoading, checkApiHealth, loadVideosPage, apiOk } =
-    useDetectionExplorerContext();
+  const { apiLoading, checkApiHealth, loadVideosPage, apiOk } = useDetectionExplorerContext();
 
   useEffect(() => {
     const initialize = async () => {
@@ -30,12 +30,12 @@ function PageContent() {
   }
 
   return (
-    <main className="min-h-dvh bg-background">
-      <div className="container mx-auto py-5 px-4">
-        <div className="mb-8 md:flex hidden flex-row items-center gap-2">
+    <main className="bg-background min-h-dvh">
+      <div className="container mx-auto px-4 py-5">
+        <div className="mb-8 hidden flex-row items-center gap-2 md:flex">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="w-16 h-16"
+            className="h-16 w-16"
             viewBox="0 0 512 512"
             fill="currentColor"
           >
@@ -44,7 +44,7 @@ function PageContent() {
             <path d="M126.414 214.348c5.194 1.31 7.665 5.423 10.586 9.652l1.887 2.684c7.655 11.692 13.267 24.717 18.972 37.441l1.516 3.375 1.344 3c1.192 2.326 2.456 4.036 4.156 6 3.667 4.79 2.71 10.81 2.125 16.5-1.129 7.725-2.948 13.791-9 19-3.987 1.993-8.666 1.517-13 1-3.062-1.229-5.435-2.946-8-5l-1.73-1.21c-15.91-12.015-24.298-35.727-26.989-54.794-1.114-11.872-1.226-24.366 6.719-33.996 3.724-3.271 6.532-3.831 11.414-3.652M125 250c-2.419 4.837-1.565 11.617-.352 16.734 2.672 7.353 6.728 13.55 13.915 16.954 4.225.384 5.985-.256 9.437-2.688 3.957-5.451 3.722-10.495 3-17-2.005-8-6.121-14.414-13-19-6.386-.721-8.844-.29-13 5M359 339h58v49h-58c1.278-3.194 2.542-6.084 4.063-9.125 6.11-13.897.474-26.263-4.063-39.875M94 187l-1.102 1.434A570 570 0 0 0 88 195l-1.559 2.043C71.84 217.258 73.505 242.566 76 266h-2a134 134 0 0 1-4.937-7.312l-1.466-2.303C40.283 213.122 40.283 213.122 43 191c1.357-3.866 3.644-7.583 7-10 14.461-3.84 31.001-.874 44 6" />
             <path d="M133 252c4.565 1.794 7.01 4.945 9.11 9.305.99 3 1.09 5.358 1.015 8.507l-.055 2.958L143 275c-4 0-4 0-6.062-1.562-5.1-6.416-5.658-12.43-4.938-20.438zM331.438 357.688C335 358 335 358 337 359.063c1.634 3.165.853 5.587 0 8.937-3 2-3 2-6.062 1.75C328 369 328 369 326 367c-.25-3.5-.25-3.5 0-7 2-2 2-2 5.438-2.312" />
           </svg>
-          <h1 className="text-4xl font-bold tracking-tight text-foreground md:block hidden">
+          <h1 className="text-foreground hidden text-4xl font-bold tracking-tight md:block">
             CCTV Activity Detection App
           </h1>
         </div>

@@ -9,9 +9,7 @@ const ISO_DURATION_PATTERN =
  * subset of ISO-8601 (days + hours + minutes + seconds, optionally negative). This is
  * the subset the backend produces for video event timestamps.
  */
-export function parseIsoDurationToSeconds(
-  input?: string | null,
-): number | null {
+export function parseIsoDurationToSeconds(input?: string | null): number | null {
   if (!input) {
     return null;
   }

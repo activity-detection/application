@@ -4,6 +4,7 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
+import { client } from "@/lib/client";
 import type {
   Details,
   GetVideoSequencesParams,
@@ -12,9 +13,7 @@ import type {
   UploadVideoParams,
   VideoSequence,
   VideoSequencePage,
-} from "../../../models";
-
-import { client } from "../../client";
+} from "@/models";
 
 export type uploadVideoResponse200 = {
   data: Blob;
@@ -37,9 +36,7 @@ export const getUploadVideoUrl = (params: UploadVideoParams) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0
-    ? `/videos/upload?${stringifiedParams}`
-    : `/videos/upload`;
+  return stringifiedParams.length > 0 ? `/videos/upload?${stringifiedParams}` : `/videos/upload`;
 };
 
 export const uploadVideo = async (
@@ -79,9 +76,7 @@ export const getGetVideosUrl = (params?: GetVideosParams) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0
-    ? `/videos?${stringifiedParams}`
-    : `/videos`;
+  return stringifiedParams.length > 0 ? `/videos?${stringifiedParams}` : `/videos`;
 };
 
 export const getVideos = async (
@@ -171,12 +166,10 @@ export type getVideoSequenceConcatMediaResponse206 = {
   status: 206;
 };
 
-export type getVideoSequenceConcatMediaResponseSuccess =
-  getVideoSequenceConcatMediaResponse206 & {
-    headers: Headers;
-  };
-export type getVideoSequenceConcatMediaResponse =
-  getVideoSequenceConcatMediaResponseSuccess;
+export type getVideoSequenceConcatMediaResponseSuccess = getVideoSequenceConcatMediaResponse206 & {
+  headers: Headers;
+};
+export type getVideoSequenceConcatMediaResponse = getVideoSequenceConcatMediaResponseSuccess;
 
 export const getGetVideoSequenceConcatMediaUrl = (originId: string) => {
   return `/videos/sequences/${originId}/concat`;
@@ -186,13 +179,10 @@ export const getVideoSequenceConcatMedia = async (
   originId: string,
   options?: RequestInit,
 ): Promise<getVideoSequenceConcatMediaResponse> => {
-  return client<getVideoSequenceConcatMediaResponse>(
-    getGetVideoSequenceConcatMediaUrl(originId),
-    {
-      ...options,
-      method: "GET",
-    },
-  );
+  return client<getVideoSequenceConcatMediaResponse>(getGetVideoSequenceConcatMediaUrl(originId), {
+    ...options,
+    method: "GET",
+  });
 };
 
 export const getGetVideoSequenceInfoUrl = (originId: string) => {
@@ -250,10 +240,9 @@ export type getVideoSequences1Response200 = {
   status: 200;
 };
 
-export type getVideoSequences1ResponseSuccess =
-  getVideoSequences1Response200 & {
-    headers: Headers;
-  };
+export type getVideoSequences1ResponseSuccess = getVideoSequences1Response200 & {
+  headers: Headers;
+};
 export type getVideoSequences1Response = getVideoSequences1ResponseSuccess;
 
 export const getGetVideoSequences1Url = (originId: string) => {
@@ -264,11 +253,8 @@ export const getVideoSequences1 = async (
   originId: string,
   options?: RequestInit,
 ): Promise<getVideoSequences1Response> => {
-  return client<getVideoSequences1Response>(
-    getGetVideoSequences1Url(originId),
-    {
-      ...options,
-      method: "GET",
-    },
-  );
+  return client<getVideoSequences1Response>(getGetVideoSequences1Url(originId), {
+    ...options,
+    method: "GET",
+  });
 };

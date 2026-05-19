@@ -4,30 +4,25 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
+import { client } from "@/lib/client";
 import type {
   CreateDetectionTemplateRequest,
   DeleteDetectionTemplateParams,
   EditDetectionTemplateRequest,
   GetDetectionTemplatesParams,
-} from "../../../models";
-
-import { client } from "../../client";
+} from "@/models";
 
 export type getDetectionTemplatesResponse200 = {
   data: Blob;
   status: 200;
 };
 
-export type getDetectionTemplatesResponseSuccess =
-  getDetectionTemplatesResponse200 & {
-    headers: Headers;
-  };
-export type getDetectionTemplatesResponse =
-  getDetectionTemplatesResponseSuccess;
+export type getDetectionTemplatesResponseSuccess = getDetectionTemplatesResponse200 & {
+  headers: Headers;
+};
+export type getDetectionTemplatesResponse = getDetectionTemplatesResponseSuccess;
 
-export const getGetDetectionTemplatesUrl = (
-  params?: GetDetectionTemplatesParams,
-) => {
+export const getGetDetectionTemplatesUrl = (params?: GetDetectionTemplatesParams) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -38,22 +33,17 @@ export const getGetDetectionTemplatesUrl = (
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0
-    ? `/rules?${stringifiedParams}`
-    : `/rules`;
+  return stringifiedParams.length > 0 ? `/rules?${stringifiedParams}` : `/rules`;
 };
 
 export const getDetectionTemplates = async (
   params?: GetDetectionTemplatesParams,
   options?: RequestInit,
 ): Promise<getDetectionTemplatesResponse> => {
-  return client<getDetectionTemplatesResponse>(
-    getGetDetectionTemplatesUrl(params),
-    {
-      ...options,
-      method: "GET",
-    },
-  );
+  return client<getDetectionTemplatesResponse>(getGetDetectionTemplatesUrl(params), {
+    ...options,
+    method: "GET",
+  });
 };
 
 export type editDetectionTemplateResponse200 = {
@@ -61,12 +51,10 @@ export type editDetectionTemplateResponse200 = {
   status: 200;
 };
 
-export type editDetectionTemplateResponseSuccess =
-  editDetectionTemplateResponse200 & {
-    headers: Headers;
-  };
-export type editDetectionTemplateResponse =
-  editDetectionTemplateResponseSuccess;
+export type editDetectionTemplateResponseSuccess = editDetectionTemplateResponse200 & {
+  headers: Headers;
+};
+export type editDetectionTemplateResponse = editDetectionTemplateResponseSuccess;
 
 export const getEditDetectionTemplateUrl = () => {
   return `/rules`;
@@ -89,10 +77,9 @@ export type addDetectionTemplateResponse200 = {
   status: 200;
 };
 
-export type addDetectionTemplateResponseSuccess =
-  addDetectionTemplateResponse200 & {
-    headers: Headers;
-  };
+export type addDetectionTemplateResponseSuccess = addDetectionTemplateResponse200 & {
+  headers: Headers;
+};
 export type addDetectionTemplateResponse = addDetectionTemplateResponseSuccess;
 
 export const getAddDetectionTemplateUrl = () => {
@@ -116,10 +103,9 @@ export type getDetectedElementsResponse200 = {
   status: 200;
 };
 
-export type getDetectedElementsResponseSuccess =
-  getDetectedElementsResponse200 & {
-    headers: Headers;
-  };
+export type getDetectedElementsResponseSuccess = getDetectedElementsResponse200 & {
+  headers: Headers;
+};
 export type getDetectedElementsResponse = getDetectedElementsResponseSuccess;
 
 export const getGetDetectedElementsUrl = () => {
@@ -140,16 +126,12 @@ export type deleteDetectionTemplateResponse200 = {
   status: 200;
 };
 
-export type deleteDetectionTemplateResponseSuccess =
-  deleteDetectionTemplateResponse200 & {
-    headers: Headers;
-  };
-export type deleteDetectionTemplateResponse =
-  deleteDetectionTemplateResponseSuccess;
+export type deleteDetectionTemplateResponseSuccess = deleteDetectionTemplateResponse200 & {
+  headers: Headers;
+};
+export type deleteDetectionTemplateResponse = deleteDetectionTemplateResponseSuccess;
 
-export const getDeleteDetectionTemplateUrl = (
-  params: DeleteDetectionTemplateParams,
-) => {
+export const getDeleteDetectionTemplateUrl = (params: DeleteDetectionTemplateParams) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -160,20 +142,15 @@ export const getDeleteDetectionTemplateUrl = (
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0
-    ? `/rules/?${stringifiedParams}`
-    : `/rules/`;
+  return stringifiedParams.length > 0 ? `/rules/?${stringifiedParams}` : `/rules/`;
 };
 
 export const deleteDetectionTemplate = async (
   params: DeleteDetectionTemplateParams,
   options?: RequestInit,
 ): Promise<deleteDetectionTemplateResponse> => {
-  return client<deleteDetectionTemplateResponse>(
-    getDeleteDetectionTemplateUrl(params),
-    {
-      ...options,
-      method: "DELETE",
-    },
-  );
+  return client<deleteDetectionTemplateResponse>(getDeleteDetectionTemplateUrl(params), {
+    ...options,
+    method: "DELETE",
+  });
 };

@@ -15,34 +15,32 @@ export function SettingsDeleteConfirmation({
 }: SettingsDeleteConfirmationProps) {
   return (
     <div
-      className="fixed inset-0 z-60 flex items-center justify-center backdrop-blur-xs bg-black/30 p-4"
+      className="fixed inset-0 z-60 flex items-center justify-center bg-black/30 p-4 backdrop-blur-xs"
       onClick={(e) => {
         if (e.target === e.currentTarget) onCancel();
       }}
     >
-      <Card className="w-full max-w-sm border-border/50 shadow-lg">
+      <Card className="border-border/50 w-full max-w-sm shadow-lg">
         <CardContent className="space-y-4 px-4 py-1">
           <div className="space-y-1">
-            <h2 className="text-lg font-semibold text-foreground">
-              Delete Template
-            </h2>
-            <p className="text-sm text-muted-foreground">
+            <h2 className="text-foreground text-lg font-semibold">Delete Template</h2>
+            <p className="text-muted-foreground text-sm">
               Are you sure you want to delete{" "}
-              <span className="font-semibold text-foreground">{name}</span>?
+              <span className="text-foreground font-semibold">{name}</span>?
             </p>
           </div>
           <div className="flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={onCancel}
-              className="cursor-pointer inline-flex h-10 items-center rounded-lg border border-border bg-muted px-4 text-sm text-muted-foreground hover:bg-muted/80"
+              className="border-border bg-muted text-muted-foreground hover:bg-muted/80 inline-flex h-10 cursor-pointer items-center rounded-lg border px-4 text-sm"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={onConfirm}
-              className="cursor-pointer inline-flex h-10 items-center rounded-lg border bg-red-900/70 px-4 text-sm text-foreground hover:bg-red-900/80"
+              className="text-foreground inline-flex h-10 cursor-pointer items-center rounded-lg border bg-red-900/70 px-4 text-sm hover:bg-red-900/80"
             >
               Delete
             </button>

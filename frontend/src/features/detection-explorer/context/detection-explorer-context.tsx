@@ -1,13 +1,7 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+
 import {
   deleteVideo,
   getVideoSequences,
@@ -60,19 +54,14 @@ type DetectionExplorerContextValue = {
   ) => Promise<void>;
 };
 
-const DetectionExplorerContext = createContext<
-  DetectionExplorerContextValue | undefined
->(undefined);
+const DetectionExplorerContext = createContext<DetectionExplorerContextValue | undefined>(
+  undefined,
+);
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ||
-  "http://localhost:8080";
+  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") || "http://localhost:8080";
 
-export function DetectionExplorerProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export function DetectionExplorerProvider({ children }: { children: ReactNode }) {
   const [apiOk, setApiOk] = useState<boolean | null>(null);
   const [apiLoading, setApiLoading] = useState(true);
   const [videosLoading, setVideosLoading] = useState(false);
@@ -152,14 +141,12 @@ export function DetectionExplorerProvider({
           (data.content ?? []).map((sequence) => {
             const firstPart = sequence.parts[0];
             const firstPartWithDescription = sequence.parts.find(
-              (part) =>
-                typeof part.description === "string" && part.description.trim(),
+              (part) => typeof part.description === "string" && part.description.trim(),
             );
 
             return {
               id: sequence.origin_id,
-              name:
-                firstPart?.name || `Video ${sequence.origin_id.slice(0, 8)}`,
+              name: firstPart?.name || `Video ${sequence.origin_id.slice(0, 8)}`,
               description: firstPartWithDescription?.description ?? undefined,
               upload_date: sequence.sequence_upload_date,
             };
@@ -197,12 +184,8 @@ export function DetectionExplorerProvider({
             try {
               const sequenceResponse = await getVideoSequences1(id);
               const sequence =
-                unwrapPayload<VideoSequencePage["content"][number]>(
-                  sequenceResponse,
-                );
-              return Array.isArray(sequence.parts)
-                ? sequence.parts.map((part) => part.id)
-                : [id];
+                unwrapPayload<VideoSequencePage["content"][number]>(sequenceResponse);
+              return Array.isArray(sequence.parts) ? sequence.parts.map((part) => part.id) : [id];
             } catch {
               return [id];
             }
@@ -253,18 +236,14 @@ export function DetectionExplorerProvider({
   );
 
   return (
-    <DetectionExplorerContext.Provider value={value}>
-      {children}
-    </DetectionExplorerContext.Provider>
+    <DetectionExplorerContext.Provider value={value}>{children}</DetectionExplorerContext.Provider>
   );
 }
 
 export function useDetectionExplorerContext() {
   const context = useContext(DetectionExplorerContext);
   if (!context) {
-    throw new Error(
-      "useDetectionExplorerContext must be used within DetectionExplorerProvider",
-    );
+    throw new Error("useDetectionExplorerContext must be used within DetectionExplorerProvider");
   }
   return context;
 }
