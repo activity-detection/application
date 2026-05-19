@@ -4,13 +4,14 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
-import { client } from "@/lib/client";
 import type {
   CreateDetectionTemplateRequest,
   DeleteDetectionTemplateParams,
   EditDetectionTemplateRequest,
   GetDetectionTemplatesParams,
-} from "@/models";
+} from "../../../models";
+
+import { client } from "../../client";
 
 export type getDetectionTemplatesResponse200 = {
   data: Blob;

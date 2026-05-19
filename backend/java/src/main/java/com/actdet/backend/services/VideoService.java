@@ -10,6 +10,12 @@ import com.actdet.backend.services.exceptions.RecordNotFoundException;
 import com.actdet.backend.services.exceptions.RecordSavingException;
 import com.actdet.backend.services.exceptions.VideoNotFoundException;
 import jakarta.transaction.Transactional;
+import org.jcodec.codecs.h264.mp4.AvcCBox;
+import org.jcodec.containers.mp4.MP4Util;
+import org.jcodec.containers.mp4.boxes.Box;
+import org.jcodec.containers.mp4.boxes.NodeBox;
+import org.jcodec.containers.mp4.boxes.SampleEntry;
+import org.jcodec.containers.mp4.boxes.TrakBox;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +26,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -35,6 +42,7 @@ public class VideoService {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private final Path videoFolderPath;
+    private final Path dashCacheFolderPath;
     private final int maxDepth;
     private final VideoRepository videoRepository;
     private final VideoDetailsRepository videoDetailsRepository;
@@ -51,6 +59,12 @@ public class VideoService {
         Path baseDir = Paths.get("").toAbsolutePath();
 
         this.videoFolderPath = baseDir.resolve(relativeFolderPath);
+        this.dashCacheFolderPath = Paths.get(System.getProperty("java.io.tmpdir"), "activity-detection-dash-cache");
+        try {
+            Files.createDirectories(this.dashCacheFolderPath);
+        } catch (IOException e) {
+            throw new IllegalStateException("Cannot initialize DASH cache", e);
+        }
         logger.info("IdentifierToVideoMapperService has been initialized. Video files will be read from: {}", this.videoFolderPath);
     }
 
@@ -195,6 +209,285 @@ public class VideoService {
         return new VideoSequenceDTO(videoList);
     }
 
+    private String escapeXml(String value) {
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&apos;");
+    }
+
+    private Duration getVideoDuration(String videoId) {
+        VideoDetails.Details details = getVideoDetails(videoId);
+        Duration duration = details.getDuration();
+        if (duration == null) {
+            throw new IllegalStateException("Video duration is required to build DASH manifest");
+        }
+        return duration;
+    }
+
+    private List<VideoDTO> getDashManifestVideos(String videoId) {
+        try {
+            return getVideoSequence(videoId).getVideos();
+        } catch (RecordNotFoundException ignored) {
+            UUID videoUUID;
+            try {
+                videoUUID = UUID.fromString(videoId);
+            } catch (IllegalArgumentException e) {
+                throw new RecordNotFoundException("Specified record does not exist");
+            }
+
+            Video video = videoRepository.findById(videoUUID)
+                    .orElseThrow(() -> new RecordNotFoundException("Specified record does not exist"));
+            return List.of(new VideoDTO(video));
+        }
+    }
+
+    private String getCodecForSampleEntry(SampleEntry sampleEntry) {
+        String fourcc = sampleEntry.getFourcc();
+        if ("avc1".equals(fourcc)) {
+            AvcCBox avcCBox = NodeBox.findFirstPath((NodeBox) sampleEntry, AvcCBox.class, Box.path("avcC"));
+            if (avcCBox != null) {
+                return String.format(Locale.ROOT, "avc1.%02x%02x%02x", avcCBox.getProfile(), avcCBox.getProfileCompat(), avcCBox.getLevel());
+            }
+            return "avc1";
+        }
+        if ("mp4a".equals(fourcc)) {
+            return "mp4a.40.2";
+        }
+        return fourcc;
+    }
+
+    private String getCodecs(Path videoPath) {
+        try {
+            TrakBox[] tracks = MP4Util.parseMovie(videoPath.toFile()).getTracks();
+            String videoCodec = null;
+            String audioCodec = null;
+            for (TrakBox track : tracks) {
+                SampleEntry[] sampleEntries = track.getSampleEntries();
+                if (sampleEntries.length == 0) {
+                    continue;
+                }
+
+                String codec = getCodecForSampleEntry(sampleEntries[0]);
+                if (track.isVideo() && videoCodec == null) {
+                    videoCodec = codec;
+                } else if (track.isAudio() && audioCodec == null) {
+                    audioCodec = codec;
+                }
+            }
+            List<String> codecs = new ArrayList<>();
+            if (videoCodec != null) {
+                codecs.add(videoCodec);
+            }
+            if (audioCodec != null) {
+                codecs.add(audioCodec);
+            }
+            if (codecs.isEmpty()) {
+                throw new IllegalStateException("Video codecs are required to build DASH manifest");
+            }
+            return String.join(",", codecs);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to inspect video codecs", e);
+        }
+    }
+
+    private long estimateBandwidth(Path videoPath, Duration duration) {
+        try {
+            long fileSizeBytes = Files.size(videoPath);
+            long durationMillis = Math.max(1L, duration.toMillis());
+            return Math.max(1L, Math.round((fileSizeBytes * 8_000d) / durationMillis));
+        } catch (IOException e) {
+            logger.warn("Cannot estimate bandwidth. videoPath={}", videoPath, e);
+            return 1L;
+        }
+    }
+
+    private Path getDashPackageFolder(String cacheKey, String videoId) {
+        return dashCacheFolderPath.resolve(cacheKey).resolve(videoId);
+    }
+
+    private String dashCacheKeyForVideo(String videoId) {
+        return "video-" + videoId;
+    }
+
+    private String dashCacheKeyForSequence(String originId) {
+        return "sequence-" + originId;
+    }
+
+    private Path getDashManifestPath(String cacheKey, String videoId) {
+        return getDashPackageFolder(cacheKey, videoId).resolve("manifest.mpd");
+    }
+
+    private Path getDashAssetPath(String cacheKey, String videoId, String assetPath) {
+        return getDashPackageFolder(cacheKey, videoId).resolve(assetPath).normalize();
+    }
+
+    private void generateDashPackage(Path sourceVideoPath, Path packageFolder) {
+        Path manifestPath = packageFolder.resolve("manifest.mpd");
+        if (Files.exists(manifestPath)) {
+            return;
+        }
+
+        try {
+            Files.createDirectories(packageFolder);
+            double segDurationSeconds = Math.max(2d, Math.min(6d, getVideoDurationFromSource(sourceVideoPath).toMillis() / 1000d));
+            Process process = new ProcessBuilder(
+                    "ffmpeg",
+                    "-y",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-i",
+                    sourceVideoPath.toString(),
+                    "-map",
+                    "0",
+                    "-c",
+                    "copy",
+                    "-f",
+                    "dash",
+                    "-use_template",
+                    "1",
+                    "-use_timeline",
+                    "1",
+                    "-seg_duration",
+                    String.valueOf(segDurationSeconds),
+                    "-init_seg_name",
+                    "init-$RepresentationID$.m4s",
+                    "-media_seg_name",
+                    "chunk-$RepresentationID$-$Number%05d$.m4s",
+                    "manifest.mpd"
+            ).directory(packageFolder.toFile()).redirectErrorStream(true).start();
+
+            String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            if (process.waitFor() != 0) {
+                throw new IllegalStateException("Failed to generate DASH package for " + sourceVideoPath + ": " + output);
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to generate DASH package for " + sourceVideoPath, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Failed to generate DASH package for " + sourceVideoPath, e);
+        }
+    }
+
+    private Duration getVideoDurationFromSource(Path sourceVideoPath) {
+        try {
+            VideoDetails.Details details = getVideoDetailsByPath(sourceVideoPath);
+            if (details.getDuration() == null) {
+                throw new IllegalStateException("Video duration is required to build DASH manifest");
+            }
+            return details.getDuration();
+        } catch (RuntimeException e) {
+            throw e;
+        }
+    }
+
+    private VideoDetails.Details getVideoDetailsByPath(Path sourceVideoPath) {
+        Optional<UUID> videoId = getVideoIdByRelativePathToFile(videoFolderPath.relativize(sourceVideoPath));
+        if (videoId.isEmpty()) {
+            throw new RecordNotFoundException("Specified video does not exist");
+        }
+        return getVideoDetails(videoId.get().toString());
+    }
+
+    private String extractDashPeriodBody(String dashManifest) {
+        int periodStart = dashManifest.indexOf("<Period");
+        int periodEnd = dashManifest.lastIndexOf("</Period>");
+        if (periodStart < 0 || periodEnd < 0) {
+            throw new IllegalStateException("Generated DASH package missing Period");
+        }
+        int bodyStart = dashManifest.indexOf('>', periodStart);
+        if (bodyStart < 0 || bodyStart >= periodEnd) {
+            throw new IllegalStateException("Generated DASH package missing Period body");
+        }
+        return dashManifest.substring(bodyStart + 1, periodEnd).trim();
+    }
+
+    private String buildDashManifest(List<VideoDTO> videos, boolean sequenceManifest, String cacheKey) {
+        if (videos.isEmpty()) {
+            throw new IllegalStateException("DASH manifest requires at least one video");
+        }
+
+        List<Duration> durations = new ArrayList<>(videos.size());
+        Duration totalDuration = Duration.ZERO;
+        for (VideoDTO video : videos) {
+            Duration duration = getVideoDuration(video.getId().toString());
+            durations.add(duration);
+            totalDuration = totalDuration.plus(duration);
+        }
+
+        StringBuilder manifest = new StringBuilder();
+        manifest.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+        manifest.append("<MPD xmlns=\"urn:mpeg:dash:schema:mpd:2011\"")
+                .append(" type=\"static\"")
+                .append(" profiles=\"urn:mpeg:dash:profile:isoff-on-demand:2011\"")
+                .append(" minBufferTime=\"PT1.5S\"")
+                .append(" mediaPresentationDuration=\"").append(escapeXml(totalDuration.toString())).append("\">\n");
+
+        Duration periodStart = Duration.ZERO;
+        for (int index = 0; index < videos.size(); index++) {
+            VideoDTO video = videos.get(index);
+            Duration duration = durations.get(index);
+            Path videoPath = getVideoPathForIdentifier(video.getId().toString());
+            Path packageFolder = getDashPackageFolder(cacheKey, video.getId().toString());
+            generateDashPackage(videoPath, packageFolder);
+            String periodBody;
+            try {
+                periodBody = extractDashPeriodBody(Files.readString(getDashManifestPath(cacheKey, video.getId().toString())));
+            } catch (IOException e) {
+                throw new IllegalStateException("Failed to read DASH manifest for " + video.getId(), e);
+            }
+
+            manifest.append("  <Period id=\"period-").append(index + 1).append("\"")
+                    .append(" start=\"").append(escapeXml(periodStart.toString())).append("\"")
+                    .append(" duration=\"").append(escapeXml(duration.toString())).append("\">\n");
+            manifest.append("    <BaseURL>")
+                    .append(sequenceManifest ? "dash/" + escapeXml(video.getId().toString()) + "/" : "dash/")
+                    .append("</BaseURL>\n");
+            manifest.append(periodBody).append("\n");
+            manifest.append("  </Period>\n");
+            periodStart = periodStart.plus(duration);
+        }
+
+        manifest.append("</MPD>\n");
+        return manifest.toString();
+    }
+
+    public String getDashManifestForVideo(String videoId) {
+        UUID videoUUID;
+        try {
+            videoUUID = UUID.fromString(videoId);
+        } catch (IllegalArgumentException e) {
+            throw new RecordNotFoundException("Specified record does not exist");
+        }
+
+        Video video = videoRepository.findById(videoUUID)
+                .orElseThrow(() -> new RecordNotFoundException("Specified record does not exist"));
+        return buildDashManifest(List.of(new VideoDTO(video)), false, dashCacheKeyForVideo(videoId));
+    }
+
+    public String getDashManifestForSequence(String originId) {
+        return buildDashManifest(getDashManifestVideos(originId), true, dashCacheKeyForSequence(originId));
+    }
+
+    public org.springframework.core.io.Resource getDashAssetForVideo(String videoId, String assetPath) {
+        Path asset = getDashAssetPath(dashCacheKeyForVideo(videoId), videoId, assetPath);
+        if (!Files.exists(asset)) {
+            throw new RecordNotFoundException("Specified DASH asset does not exist: " + asset);
+        }
+        return new org.springframework.core.io.FileSystemResource(asset);
+    }
+
+    public org.springframework.core.io.Resource getDashAssetForSequence(String originId, String videoId, String assetPath) {
+        Path asset = getDashAssetPath(dashCacheKeyForSequence(originId), videoId, assetPath);
+        if (!Files.exists(asset)) {
+            throw new RecordNotFoundException("Specified DASH asset does not exist: " + asset);
+        }
+        return new org.springframework.core.io.FileSystemResource(asset);
+    }
+
     public Optional<UUID> getVideoIdByRelativePathToFile(Path pathToFile) {
         if (pathToFile == null) {
             return Optional.empty();
@@ -254,34 +547,5 @@ public class VideoService {
         sequenceDetails.setDuration(sequenceDuration);
         return sequenceDetails;
     }
-
-    public String getHlsManifestForSequence(String originId) throws IOException {
-        VideoSequenceDTO sequence = getVideoSequence(originId);
-
-        StringBuilder manifest = new StringBuilder();
-        manifest.append("#EXTM3U\n");
-        manifest.append("#EXT-X-VERSION:4\n");
-        manifest.append("#EXT-X-TARGETDURATION:900\n"); //Ustalenie maksymalnej dlugosci pojedynczego elementu w sekwencji HLS
-        manifest.append("#EXT-X-MEDIA-SEQUENCE:0\n\n");
-
-        for (VideoDTO videoDto : sequence.getVideos()) {
-            Path path = getVideoPathForIdentifier(videoDto.getId().toString());
-            long fileSize = Files.size(path);
-
-            VideoDetails.Details details = getVideoDetails(videoDto.getId().toString());
-            double durationInSeconds = details.getDuration().toMillis() / 1000.0;
-
-            manifest.append("#EXT-X-DISCONTINUITY\n");
-            manifest.append("#EXTINF:").append(String.format(Locale.US, "%.3f", durationInSeconds)).append(",\n");
-            manifest.append("#EXT-X-BYTERANGE: ").append(fileSize).append("@0\n");
-
-            //URL do pliku video
-            manifest.append("/videos/").append(videoDto.getId()).append("\n\n");
-        }
-
-        manifest.append("#EXT-X-ENDLIST");
-        return manifest.toString();
-    }
-
 
 }

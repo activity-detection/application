@@ -7,7 +7,7 @@
 import type { EventDetection } from "./eventDetection";
 import type { ObjectDetections } from "./objectDetections";
 
-export interface Details {
+export interface VideoDetailsRequestBody {
   events?: EventDetection[];
   detections?: ObjectDetections[];
 }

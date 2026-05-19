@@ -1,18 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import videojs from "video.js";
+import { useEffect, useMemo, useRef, useState } from "react";
+import shaka from "shaka-player";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { getApiBaseUrl } from "@/lib/client";
 import {
+  getGetVideoDashManifestUrl,
+  getGetSequenceManifestUrl,
   getVideoInfo,
   getVideoSequenceInfo,
   getVideoSequences,
 } from "@/lib/endpoints/media-controller/media-controller";
+import { getApiBaseUrl } from "@/lib/client";
 import { cn } from "@/lib/utils";
-import type { Details, VideoSequence, VideoSequencePage, VideoSequencePart } from "@/models";
-import { formatSecondsAsClock, parseIsoDurationToSeconds } from "@/utils/duration";
+import type { VideoSequence, VideoSequencePage, VideoSequencePart } from "@/models";
 
 interface VideoPlayerProps {
   videoId: string | null;
@@ -23,41 +24,36 @@ interface VideoPlayerProps {
   onClose: () => void;
 }
 
-interface VideoSourceCandidate {
-  src: string;
-  mimeType?: string;
+interface DetectionTimestamp {
+  from?: string;
+  to?: string;
+}
+
+interface EventDetection {
+  label?: string;
+  timestamp?: DetectionTimestamp;
+}
+
+interface ObjectDetection {
+  name?: string;
+  count?: number;
+}
+
+interface ObjectDetections {
+  timestamp?: DetectionTimestamp;
+  objects?: ObjectDetection[];
+}
+
+interface VideoDetailsPayload {
+  duration?: string;
+  events?: EventDetection[];
+  detections?: ObjectDetections[];
 }
 
 interface VideoAssetMeta {
   name: string;
   description: string;
   uploadDate: string;
-}
-
-function formatTimestampRange(from?: string, to?: string) {
-  if (!from && !to) {
-    return "—";
-  }
-  return `${from || "—"} -> ${to || "—"}`;
-}
-
-function normalizeMimeType(value?: string | null): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const normalized = value.split(";")[0]?.trim().toLowerCase();
-  return normalized && normalized.startsWith("video/") ? normalized : undefined;
-}
-
-function guessMimeTypeFromName(name?: string): string | undefined {
-  const normalized = name?.toLowerCase() ?? "";
-  if (normalized.endsWith(".mp4")) {
-    return "video/mp4";
-  }
-  if (normalized.endsWith(".mov")) {
-    return "video/quicktime";
-  }
-  return undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -75,6 +71,7 @@ function isVideoSequencePart(value: unknown): value is VideoSequencePart {
   if (!isRecord(value)) {
     return false;
   }
+
   return (
     typeof value.id === "string" &&
     typeof value.name === "string" &&
@@ -86,6 +83,7 @@ function isVideoSequence(value: unknown): value is VideoSequence {
   if (!isRecord(value)) {
     return false;
   }
+
   if (
     typeof value.origin_id !== "string" ||
     typeof value.sequence_upload_date !== "string" ||
@@ -93,6 +91,7 @@ function isVideoSequence(value: unknown): value is VideoSequence {
   ) {
     return false;
   }
+
   return value.parts.every((part) => isVideoSequencePart(part));
 }
 
@@ -100,6 +99,7 @@ function isVideoSequencePage(value: unknown): value is VideoSequencePage {
   if (!isRecord(value) || !Array.isArray(value.content) || !isRecord(value.page)) {
     return false;
   }
+
   const page = value.page;
   if (
     typeof page.size !== "number" ||
@@ -109,7 +109,26 @@ function isVideoSequencePage(value: unknown): value is VideoSequencePage {
   ) {
     return false;
   }
+
   return value.content.every((sequence) => isVideoSequence(sequence));
+}
+
+function buildApiUrl(path: string) {
+  const baseUrl = getApiBaseUrl().replace(/\/$/, "");
+  const normalizedPath = path.replace(/^\/+/, "");
+  return new URL(normalizedPath, `${baseUrl}/`).toString();
+}
+
+function getSequenceDescription(
+  resolvedSequence: VideoSequence | null,
+  selectedPart: VideoSequencePart | undefined,
+  videoDescription?: string,
+) {
+  const sequenceDescription = resolvedSequence?.parts.find(
+    (part) => typeof part.description === "string" && part.description.trim(),
+  )?.description;
+
+  return sequenceDescription ?? selectedPart?.description ?? videoDescription ?? "No description";
 }
 
 async function resolveVideoSequence(videoId: string): Promise<VideoSequence | null> {
@@ -118,18 +137,18 @@ async function resolveVideoSequence(videoId: string): Promise<VideoSequence | nu
   let totalPages = 1;
 
   while (currentPage < totalPages) {
-    const pageResponse = await getVideoSequences({
+    const response = await getVideoSequences({
       page: currentPage,
       size: pageSize,
       sort: ["uploadDate,desc"],
     });
 
-    const pagePayload = unwrapPayload(pageResponse);
-    if (!isVideoSequencePage(pagePayload)) {
+    const payload = unwrapPayload(response);
+    if (!isVideoSequencePage(payload)) {
       throw new Error("Invalid video page payload");
     }
 
-    const found = pagePayload.content.find(
+    const found = payload.content.find(
       (sequence) =>
         sequence.origin_id === videoId || sequence.parts.some((part) => part.id === videoId),
     );
@@ -137,43 +156,11 @@ async function resolveVideoSequence(videoId: string): Promise<VideoSequence | nu
       return found;
     }
 
-    totalPages = pagePayload.page.totalPages;
+    totalPages = payload.page.totalPages;
     currentPage += 1;
   }
 
   return null;
-}
-
-function buildSourceCandidatesForPath(
-  sourcePath: string,
-  preferredMime?: string,
-): VideoSourceCandidate[] {
-  const baseUrl = getApiBaseUrl();
-  const altBaseUrl = baseUrl.replace(/\/api\/?$/, "");
-  const srcs = [`${baseUrl}${sourcePath}`, `${altBaseUrl}${sourcePath}`];
-  const candidates: VideoSourceCandidate[] = [];
-  const seen = new Set<string>();
-
-  const pushCandidate = (src: string, mimeType?: string) => {
-    const key = `${src}::${mimeType ?? ""}`;
-    if (seen.has(key)) {
-      return;
-    }
-    seen.add(key);
-    candidates.push({ src, mimeType });
-  };
-
-  const mimeOrder = [preferredMime, "video/mp4", "video/quicktime", undefined].filter(
-    (v, i, a) => v !== undefined,
-  );
-
-  for (const s of srcs) {
-    for (const mime of mimeOrder) {
-      pushCandidate(s, mime as string | undefined);
-    }
-  }
-
-  return candidates;
 }
 
 export function VideoPlayer({
@@ -185,102 +172,83 @@ export function VideoPlayer({
   onClose,
 }: VideoPlayerProps) {
   const [assetMeta, setAssetMeta] = useState<VideoAssetMeta | null>(null);
-  const [sourceCandidates, setSourceCandidates] = useState<VideoSourceCandidate[]>([]);
-  const [activeSourceIndex, setActiveSourceIndex] = useState(0);
+  const [manifestUrl, setManifestUrl] = useState<string | null>(null);
   const [sequenceLoading, setSequenceLoading] = useState(false);
   const [sequenceError, setSequenceError] = useState<string | null>(null);
-  const [videoDetails, setVideoDetails] = useState<Details | null>(null);
+  const [videoDetails, setVideoDetails] = useState<VideoDetailsPayload | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [playerLoading, setPlayerLoading] = useState(false);
+  const [playerReady, setPlayerReady] = useState(false);
 
-  const playerHostRef = useRef<HTMLDivElement | null>(null);
-  const playerRef = useRef<ReturnType<typeof videojs> | null>(null);
-  const sourceCandidatesRef = useRef<VideoSourceCandidate[]>([]);
-  const renderDetectionMarkersRef = useRef<() => void>(() => undefined);
-  const markerRenderRetryCountRef = useRef(0);
-
-  useEffect(() => {
-    sourceCandidatesRef.current = sourceCandidates;
-  }, [sourceCandidates]);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const playerRef = useRef<shaka.Player | null>(null);
 
   useEffect(() => {
+    shaka.polyfill.installAll();
+
     if (!videoId) {
       setAssetMeta(null);
-      setSourceCandidates([]);
-      setActiveSourceIndex(0);
+      setManifestUrl(null);
       setSequenceError(null);
       setVideoDetails(null);
+      setSequenceLoading(false);
+      setDetailsLoading(false);
+      setPlayerLoading(false);
       return;
     }
 
-    let isMounted = true;
-    setSequenceLoading(true);
-    setDetailsLoading(true);
-    setSequenceError(null);
-    setAssetMeta(null);
-    setSourceCandidates([]);
-    setActiveSourceIndex(0);
-    setVideoDetails(null);
+    let cancelled = false;
 
     const loadVideo = async () => {
       try {
+        setSequenceLoading(true);
+        setDetailsLoading(true);
+        setSequenceError(null);
+        setAssetMeta(null);
+        setManifestUrl(null);
+        setVideoDetails(null);
+        setPlayerLoading(false);
+
         const resolvedSequence = await resolveVideoSequence(videoId);
-        const hasSequenceConcat = !!resolvedSequence && resolvedSequence.parts.length > 1;
+        const hasSequence = (resolvedSequence?.parts.length ?? 0) > 1;
         const selectedPart =
           resolvedSequence?.parts.find((part) => part.id === videoId) ?? resolvedSequence?.parts[0];
-        const sequenceOriginId = resolvedSequence?.origin_id ?? videoId;
+        const manifestId = resolvedSequence?.origin_id ?? videoId;
 
-        const sourceName = selectedPart?.name || videoName || "Video";
-        const preferredMime = normalizeMimeType(guessMimeTypeFromName(sourceName));
+        const detailsResponse = hasSequence
+          ? await getVideoSequenceInfo(manifestId)
+          : await getVideoInfo(manifestId);
+        const detailsPayload = unwrapPayload(detailsResponse) as VideoDetailsPayload;
 
-        const primaryPath = hasSequenceConcat
-          ? `/videos/sequences/${sequenceOriginId}/concat`
-          : `/videos/${videoId}`;
-        const fallbackPath = `/videos/${selectedPart?.id ?? videoId}`;
-        const candidates = [
-          ...buildSourceCandidatesForPath(primaryPath, preferredMime),
-          ...(hasSequenceConcat ? buildSourceCandidatesForPath(fallbackPath, preferredMime) : []),
-        ];
-
-        const descriptionSource = hasSequenceConcat
-          ? resolvedSequence?.parts.find(
-              (part) => typeof part.description === "string" && part.description.trim(),
-            )?.description
-          : selectedPart?.description;
-
-        const meta: VideoAssetMeta = {
-          name: sourceName,
-          description: descriptionSource ?? videoDescription ?? "No description",
-          uploadDate:
-            (hasSequenceConcat
-              ? resolvedSequence?.sequence_upload_date
-              : selectedPart?.upload_date) ||
-            uploadDate ||
-            "—",
-        };
-
-        const detailsResponse = hasSequenceConcat
-          ? await getVideoSequenceInfo(sequenceOriginId)
-          : await getVideoInfo(videoId);
-        const detailsPayload = unwrapPayload(detailsResponse) as Details;
-
-        if (!isMounted) {
+        if (cancelled) {
           return;
         }
 
-        setAssetMeta(meta);
-        setSourceCandidates(candidates);
-        setActiveSourceIndex(0);
+        setAssetMeta({
+          name: selectedPart?.name || videoName || "Video",
+          description: getSequenceDescription(resolvedSequence, selectedPart, videoDescription),
+          uploadDate:
+            (hasSequence ? resolvedSequence?.sequence_upload_date : selectedPart?.upload_date) ||
+            uploadDate ||
+            "—",
+        });
         setVideoDetails(detailsPayload ?? null);
+
+        const manifestPath = hasSequence
+          ? getGetSequenceManifestUrl(manifestId)
+          : getGetVideoDashManifestUrl(manifestId);
+        const resolvedManifestUrl = buildApiUrl(manifestPath);
+        setManifestUrl(resolvedManifestUrl);
       } catch (error) {
-        if (!isMounted) {
+        if (cancelled) {
           return;
         }
         setSequenceError(error instanceof Error ? error.message : "Failed to load video");
         setAssetMeta(null);
-        setSourceCandidates([]);
+        setManifestUrl(null);
         setVideoDetails(null);
       } finally {
-        if (isMounted) {
+        if (!cancelled) {
           setSequenceLoading(false);
           setDetailsLoading(false);
         }
@@ -290,223 +258,91 @@ export function VideoPlayer({
     void loadVideo();
 
     return () => {
-      isMounted = false;
+      cancelled = true;
     };
-  }, [videoDescription, videoId, videoName, uploadDate]);
-
-  const detectionMarkers = useMemo(() => {
-    if (!videoDetails?.detections?.length) {
-      return [];
-    }
-
-    return videoDetails.detections
-      .map((detection, index) => {
-        const fromSeconds = parseIsoDurationToSeconds(detection.timestamp?.from);
-        const toSeconds = parseIsoDurationToSeconds(detection.timestamp?.to);
-        if (fromSeconds === null || !Number.isFinite(fromSeconds) || fromSeconds < 0) {
-          return null;
-        }
-
-        const label =
-          detection.objects.map((object) => `${object.name} (${object.count ?? 1})`).join(", ") ||
-          "Detection";
-
-        return {
-          key: `detection-${index}-${detection.timestamp?.from ?? ""}`,
-          fromSeconds,
-          toSeconds:
-            toSeconds !== null && Number.isFinite(toSeconds) && toSeconds >= fromSeconds
-              ? toSeconds
-              : null,
-          label,
-        };
-      })
-      .filter(
-        (
-          marker,
-        ): marker is {
-          key: string;
-          fromSeconds: number;
-          toSeconds: number | null;
-          label: string;
-        } => marker !== null,
-      );
-  }, [videoDetails?.detections]);
-
-  const renderDetectionMarkers = useCallback(() => {
-    const player = playerRef.current;
-    if (!player || player.isDisposed()) {
-      return;
-    }
-
-    const root = player.el();
-    if (!root) {
-      return;
-    }
-
-    const progressHolder = root.querySelector(".vjs-progress-holder") as HTMLElement | null;
-    if (!progressHolder) {
-      if (markerRenderRetryCountRef.current < 5) {
-        markerRenderRetryCountRef.current += 1;
-        window.setTimeout(() => {
-          renderDetectionMarkersRef.current();
-        }, 50);
-      }
-      return;
-    }
-    markerRenderRetryCountRef.current = 0;
-
-    progressHolder
-      .querySelectorAll(".vjs-detection-marker, .vjs-detection-marker-range")
-      .forEach((marker) => {
-        marker.remove();
-      });
-
-    const duration = player.duration();
-    if (typeof duration !== "number" || !Number.isFinite(duration) || duration <= 0) {
-      return;
-    }
-
-    detectionMarkers.forEach((marker) => {
-      const clampedFrom = Math.max(0, Math.min(marker.fromSeconds, duration));
-      const clampedTo =
-        marker.toSeconds !== null
-          ? Math.max(clampedFrom, Math.min(marker.toSeconds, duration))
-          : clampedFrom;
-      const leftPercent = (clampedFrom / duration) * 100;
-      const rangeWidthPercent = ((clampedTo - clampedFrom) / duration) * 100;
-      const hasRange = rangeWidthPercent > 0.2;
-      const element = document.createElement("button");
-      element.type = "button";
-      element.className = hasRange ? "vjs-detection-marker-range" : "vjs-detection-marker";
-      const tooltip = hasRange
-        ? `${formatSecondsAsClock(clampedFrom)} -> ${formatSecondsAsClock(clampedTo)} — ${marker.label}`
-        : `${formatSecondsAsClock(clampedFrom)} — ${marker.label}`;
-      element.title = tooltip;
-      element.setAttribute("aria-label", tooltip);
-      element.style.left = `${leftPercent}%`;
-      if (hasRange) {
-        element.style.width = `${Math.max(rangeWidthPercent, 0.8)}%`;
-      }
-      element.onclick = (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        player.currentTime(clampedFrom);
-        const playPromise = player.play();
-        if (playPromise) {
-          void playPromise.catch(() => {
-            /* autoplay policy */
-          });
-        }
-      };
-
-      progressHolder.appendChild(element);
-    });
-  }, [detectionMarkers]);
+  }, [uploadDate, videoDescription, videoId, videoName]);
 
   useEffect(() => {
-    renderDetectionMarkersRef.current = renderDetectionMarkers;
-  }, [renderDetectionMarkers]);
-
-  const applyCurrentSource = useCallback(() => {
-    const player = playerRef.current;
-    const candidate = sourceCandidates[activeSourceIndex];
-    if (!player || player.isDisposed() || !candidate) {
+    const videoElement = videoRef.current;
+    if (!videoElement || playerRef.current || !videoId) {
       return;
     }
 
-    player.ready(() => {
-      if (player.isDisposed()) {
-        return;
-      }
-      player.pause();
-      player.src([
-        candidate.mimeType
-          ? { src: candidate.src, type: candidate.mimeType }
-          : { src: candidate.src },
-      ]);
-      player.load();
-      setSequenceError(null);
-    });
-  }, [activeSourceIndex, sourceCandidates]);
-
-  useEffect(() => {
-    const host = playerHostRef.current;
-    if (!host || !host.isConnected || playerRef.current) {
+    if (!shaka.Player.isBrowserSupported()) {
+      setSequenceError("Shaka Player not supported in this browser");
       return;
     }
 
-    const videoElement = document.createElement("video-js");
-    videoElement.className = "video-js vjs-big-play-centered w-full h-full";
-    host.innerHTML = "";
-    host.appendChild(videoElement);
-
-    const player = videojs(videoElement, {
-      controls: true,
-      preload: "auto",
-      fluid: true,
-      responsive: true,
-      aspectRatio: "16:9",
-      html5: {
-        vhs: {
-          overrideNative: false,
-        },
-        nativeVideoTracks: true,
-        nativeAudioTracks: true,
-      },
-    });
+    const player = new shaka.Player();
     playerRef.current = player;
+    let cancelled = false;
 
-    const onLoadedMetadata = () => {
-      window.requestAnimationFrame(() => {
-        renderDetectionMarkersRef.current();
-      });
-    };
-    const onError = () => {
-      setActiveSourceIndex((previousIndex) => {
-        const nextIndex = previousIndex + 1;
-        if (nextIndex < sourceCandidatesRef.current.length) {
-          return nextIndex;
-        }
-        setSequenceError("Failed to play video source");
-        return previousIndex;
-      });
+    void player.attach(videoElement).then(() => {
+      if (!cancelled) {
+        setPlayerReady(true);
+      }
+    });
+
+    const onError = (event: Event) => {
+      const detail = (event as CustomEvent<unknown>).detail;
+      setSequenceError(detail instanceof Error ? detail.message : "Failed to play video");
     };
 
-    player.on("loadedmetadata", onLoadedMetadata);
-    player.on("durationchange", onLoadedMetadata);
-    player.on("error", onError);
+    player.addEventListener("error", onError);
 
     return () => {
-      player.off("loadedmetadata", onLoadedMetadata);
-      player.off("durationchange", onLoadedMetadata);
-      player.off("error", onError);
-      player.dispose();
+      cancelled = true;
+      setPlayerReady(false);
+      player.removeEventListener("error", onError);
       playerRef.current = null;
-      host.innerHTML = "";
+      void player.destroy();
     };
-  }, []);
+  }, [videoId]);
 
   useEffect(() => {
-    applyCurrentSource();
-  }, [applyCurrentSource]);
+    const player = playerRef.current;
+    if (!player || !playerReady || !manifestUrl) {
+      return;
+    }
 
-  useEffect(() => {
-    renderDetectionMarkers();
-  }, [renderDetectionMarkers]);
+    let cancelled = false;
+    setPlayerLoading(true);
+    setSequenceError(null);
 
-  if (!videoId) return null;
+    void player
+      .unload()
+      .then(() => {
+        return player.load(manifestUrl, 0, "application/dash+xml");
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setSequenceError(error instanceof Error ? error.message : "Failed to load manifest");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setPlayerLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [manifestUrl, playerReady]);
+
+  const events = useMemo(() => videoDetails?.events ?? [], [videoDetails]);
+  const detections = useMemo(() => videoDetails?.detections ?? [], [videoDetails]);
+
+  if (!videoId) {
+    return null;
+  }
 
   const currentName = assetMeta?.name || videoName || "Video";
   const currentDescription = assetMeta?.description || videoDescription || "No description";
   const currentUploadDate = assetMeta?.uploadDate || uploadDate || "—";
-  const eventsCount = videoDetails?.events?.length ?? 0;
-  const detectionsCount = videoDetails?.detections?.length ?? 0;
 
   return (
-    <Card
-      className={cn("border-border/50 bg-background flex h-full flex-col shadow-sm", className)}
-    >
+    <Card className={cn("border-border/50 bg-background flex h-full flex-col shadow-sm", className)}>
       <div className="border-border/50 flex items-center justify-between gap-3 border-b p-4 pt-0">
         <h2 className="text-foreground truncate text-lg font-semibold">
           <span className="sr-only">Selected video:</span>
@@ -529,22 +365,26 @@ export function VideoPlayer({
           </svg>
         </button>
       </div>
+
       <CardContent className="space-y-4 p-4">
         <div className="relative aspect-video overflow-hidden rounded-lg bg-black">
-          <div ref={playerHostRef} data-vjs-player className="h-full w-full" />
-          {sequenceLoading ? (
+          <video
+            ref={videoRef}
+            className="h-full w-full"
+            controls
+            playsInline
+            preload="auto"
+          />
+          {(sequenceLoading || playerLoading) && (
             <div className="text-muted-foreground absolute inset-0 flex items-center justify-center bg-black/60">
               Loading video...
             </div>
-          ) : sequenceError ? (
-            <div className="text-muted-foreground absolute inset-0 flex items-center justify-center bg-black/60">
-              Failed to load video
+          )}
+          {sequenceError && (
+            <div className="text-muted-foreground absolute inset-0 flex items-center justify-center bg-black/60 px-4 text-center">
+              {sequenceError}
             </div>
-          ) : sourceCandidates.length === 0 ? (
-            <div className="text-muted-foreground absolute inset-0 flex items-center justify-center bg-black/60">
-              Failed to load video
-            </div>
-          ) : null}
+          )}
         </div>
 
         <div className="space-y-2 text-sm">
@@ -553,22 +393,22 @@ export function VideoPlayer({
 
           <details className="border-border/50 bg-muted/20 rounded-md border p-3">
             <summary className="text-foreground cursor-pointer font-semibold select-none">
-              Events ({eventsCount})
+              Events ({events.length})
             </summary>
             <div className="mt-2">
               {detailsLoading ? (
                 <p className="text-muted-foreground">Loading details...</p>
-              ) : videoDetails?.events?.length ? (
+              ) : events.length ? (
                 <div className="space-y-2">
-                  {videoDetails.events.map((event, index) => (
+                  {events.map((event, index) => (
                     <div
-                      key={`event-${event.label}-${event.timestamp?.from ?? ""}-${index}`}
+                      key={`event-${event.label ?? "event"}-${event.timestamp?.from ?? ""}-${index}`}
                       className="border-border/50 bg-muted/30 rounded-md border p-3"
                     >
-                      <div className="text-foreground text-xs">Label: {event.label}</div>
+                      <div className="text-foreground text-xs">Label: {event.label ?? "—"}</div>
                       <div className="text-muted-foreground text-xs">
-                        Timestamp:{" "}
-                        {formatTimestampRange(event.timestamp?.from, event.timestamp?.to)}
+                        Timestamp: {event.timestamp?.from ?? "—"} {"->"}{" "}
+                        {event.timestamp?.to ?? "—"}
                       </div>
                     </div>
                   ))}
@@ -581,26 +421,26 @@ export function VideoPlayer({
 
           <details className="border-border/50 bg-muted/20 rounded-md border p-3">
             <summary className="text-foreground cursor-pointer font-semibold select-none">
-              Detections ({detectionsCount})
+              Detections ({detections.length})
             </summary>
             <div className="mt-2">
               {detailsLoading ? (
                 <p className="text-muted-foreground">Loading details...</p>
-              ) : videoDetails?.detections?.length ? (
+              ) : detections.length ? (
                 <div className="space-y-2">
-                  {videoDetails.detections.map((detection, index) => (
+                  {detections.map((detection, index) => (
                     <div
                       key={`detection-${detection.timestamp?.from ?? ""}-${index}`}
                       className="border-border/50 bg-muted/30 rounded-md border p-3"
                     >
                       <div className="text-muted-foreground text-xs">
-                        Timestamp:{" "}
-                        {formatTimestampRange(detection.timestamp?.from, detection.timestamp?.to)}
+                        Timestamp: {detection.timestamp?.from ?? "—"} {"->"}{" "}
+                        {detection.timestamp?.to ?? "—"}
                       </div>
                       <div className="text-foreground mt-1 text-xs wrap-break-word">
                         Objects:{" "}
                         {detection.objects
-                          .map((object) => `${object.name} (${object.count ?? 1})`)
+                          ?.map((object) => `${object.name ?? "Object"} (${object.count ?? 1})`)
                           .join(", ") || "—"}
                       </div>
                     </div>

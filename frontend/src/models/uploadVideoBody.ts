@@ -4,9 +4,9 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
-import type { Details } from "./details";
+import type { VideoDetailsRequestBody } from "./videoDetailsRequestBody";
 
 export type UploadVideoBody = {
   file: Blob;
-  details: Details;
+  details: VideoDetailsRequestBody;
 };

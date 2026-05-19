@@ -20,10 +20,13 @@ type OpenApiLike = Record<string, unknown> & {
 };
 
 type OperationObject = {
+  operationId?: string;
+  tags?: string[];
   parameters?: unknown[];
   responses?: Record<
     string,
     {
+      description?: string;
       content?: Record<string, { schema?: Record<string, unknown> }>;
     }
   >;
@@ -258,6 +261,164 @@ function patchSequenceSchemas(spec: OpenApiLike) {
       content: {
         "application/json": {
           schema: { $ref: "#/components/schemas/VideoSequence" },
+        },
+      },
+    };
+  }
+
+  if (!spec.paths) {
+    spec.paths = {};
+  }
+
+  const videoDashManifest = spec.paths["/videos/{fileIdentifier}/manifest.mpd"]?.get;
+  if (!videoDashManifest) {
+    spec.paths["/videos/{fileIdentifier}/manifest.mpd"] = {
+      get: {
+        operationId: "getVideoDashManifest",
+        tags: ["Media Controller"],
+        parameters: [
+          {
+            name: "fileIdentifier",
+            in: "path",
+            required: true,
+            schema: {
+              type: "string",
+            },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "DASH manifest",
+            content: {
+              "application/dash+xml": {
+                schema: {
+                  type: "string",
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+  }
+
+  const videoSequenceDashManifest = spec.paths["/videos/sequences/{originId}/manifest.mpd"]?.get;
+  if (!videoSequenceDashManifest) {
+    spec.paths["/videos/sequences/{originId}/manifest.mpd"] = {
+      get: {
+        operationId: "getVideoSequenceDashManifest",
+        tags: ["Media Controller"],
+        parameters: [
+          {
+            name: "originId",
+            in: "path",
+            required: true,
+            schema: {
+              type: "string",
+            },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "DASH sequence manifest",
+            content: {
+              "application/dash+xml": {
+                schema: {
+                  type: "string",
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+  }
+
+  const videoDashAsset = spec.paths["/videos/{fileIdentifier}/dash/{assetPath}"]?.get;
+  if (!videoDashAsset) {
+    spec.paths["/videos/{fileIdentifier}/dash/{assetPath}"] = {
+      get: {
+        operationId: "getVideoDashAsset",
+        tags: ["Media Controller"],
+        parameters: [
+          {
+            name: "fileIdentifier",
+            in: "path",
+            required: true,
+            schema: {
+              type: "string",
+            },
+          },
+          {
+            name: "assetPath",
+            in: "path",
+            required: true,
+            schema: {
+              type: "string",
+            },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "DASH asset",
+            content: {
+              "application/octet-stream": {
+                schema: {
+                  type: "string",
+                  format: "binary",
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+  }
+
+  const sequenceDashAsset = spec.paths["/videos/sequences/{originId}/dash/{videoId}/{assetPath}"]?.get;
+  if (!sequenceDashAsset) {
+    spec.paths["/videos/sequences/{originId}/dash/{videoId}/{assetPath}"] = {
+      get: {
+        operationId: "getSequenceDashAsset",
+        tags: ["Media Controller"],
+        parameters: [
+          {
+            name: "originId",
+            in: "path",
+            required: true,
+            schema: {
+              type: "string",
+            },
+          },
+          {
+            name: "videoId",
+            in: "path",
+            required: true,
+            schema: {
+              type: "string",
+            },
+          },
+          {
+            name: "assetPath",
+            in: "path",
+            required: true,
+            schema: {
+              type: "string",
+            },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "DASH sequence asset",
+            content: {
+              "application/octet-stream": {
+                schema: {
+                  type: "string",
+                  format: "binary",
+                },
+              },
+            },
+          },
         },
       },
     };

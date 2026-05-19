@@ -82,7 +82,7 @@ public class VideoDetails {
             }
         }
 
-        public record DetectionTimestamp(@NotNull Duration from, @NotNull Duration to) {
+        public static record DetectionTimestamp(@NotNull Duration from, @NotNull Duration to) {
         }
 
     }

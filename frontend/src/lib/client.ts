@@ -56,5 +56,14 @@ export const client = async <T>(url: string, options: RequestInit = {}): Promise
     } as T;
   }
 
+  if (contentType.includes("xml") || contentType.includes("text/")) {
+    const text = await response.text();
+    return {
+      data: text,
+      status: response.status,
+      headers: response.headers,
+    } as T;
+  }
+
   return response.json();
 };

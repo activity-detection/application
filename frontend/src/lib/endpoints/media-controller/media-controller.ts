@@ -4,19 +4,20 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
-import { client } from "@/lib/client";
 import type {
-  Details,
   GetVideoSequencesParams,
   GetVideosParams,
+  UploadVideo200,
   UploadVideoBody,
   UploadVideoParams,
   VideoSequence,
   VideoSequencePage,
-} from "@/models";
+} from "../../../models";
+
+import { client } from "../../client";
 
 export type uploadVideoResponse200 = {
-  data: Blob;
+  data: UploadVideo200;
   status: 200;
 };
 
@@ -137,6 +138,30 @@ export const deleteVideo = async (
   });
 };
 
+export type getVideoDashManifestResponse200 = {
+  data: string;
+  status: 200;
+};
+
+export type getVideoDashManifestResponseSuccess = getVideoDashManifestResponse200 & {
+  headers: Headers;
+};
+export type getVideoDashManifestResponse = getVideoDashManifestResponseSuccess;
+
+export const getGetVideoDashManifestUrl = (fileIdentifier: string) => {
+  return `/videos/${fileIdentifier}/manifest.mpd`;
+};
+
+export const getVideoDashManifest = async (
+  fileIdentifier: string,
+  options?: RequestInit,
+): Promise<getVideoDashManifestResponse> => {
+  return client<getVideoDashManifestResponse>(getGetVideoDashManifestUrl(fileIdentifier), {
+    ...options,
+    method: "GET",
+  });
+};
+
 export type getVideoInfoResponse200 = {
   data: Blob;
   status: 200;
@@ -161,39 +186,26 @@ export const getVideoInfo = async (
   });
 };
 
-export type getVideoSequenceConcatMediaResponse206 = {
+export type getVideoDashAssetResponse200 = {
   data: Blob;
-  status: 206;
+  status: 200;
 };
 
-export type getVideoSequenceConcatMediaResponseSuccess = getVideoSequenceConcatMediaResponse206 & {
+export type getVideoDashAssetResponseSuccess = getVideoDashAssetResponse200 & {
   headers: Headers;
 };
-export type getVideoSequenceConcatMediaResponse = getVideoSequenceConcatMediaResponseSuccess;
+export type getVideoDashAssetResponse = getVideoDashAssetResponseSuccess;
 
-export const getGetVideoSequenceConcatMediaUrl = (originId: string) => {
-  return `/videos/sequences/${originId}/concat`;
+export const getGetVideoDashAssetUrl = (fileIdentifier: string, assetPath: string) => {
+  return `/videos/${fileIdentifier}/dash/${assetPath}`;
 };
 
-export const getVideoSequenceConcatMedia = async (
-  originId: string,
+export const getVideoDashAsset = async (
+  fileIdentifier: string,
+  assetPath: string,
   options?: RequestInit,
-): Promise<getVideoSequenceConcatMediaResponse> => {
-  return client<getVideoSequenceConcatMediaResponse>(getGetVideoSequenceConcatMediaUrl(originId), {
-    ...options,
-    method: "GET",
-  });
-};
-
-export const getGetVideoSequenceInfoUrl = (originId: string) => {
-  return `/videos/sequences/${originId}/info`;
-};
-
-export const getVideoSequenceInfo = async (
-  originId: string,
-  options?: RequestInit,
-): Promise<Details> => {
-  return client<Details>(getGetVideoSequenceInfoUrl(originId), {
+): Promise<getVideoDashAssetResponse> => {
+  return client<getVideoDashAssetResponse>(getGetVideoDashAssetUrl(fileIdentifier, assetPath), {
     ...options,
     method: "GET",
   });
@@ -257,4 +269,85 @@ export const getVideoSequences1 = async (
     ...options,
     method: "GET",
   });
+};
+
+export type getSequenceManifestResponse200 = {
+  data: string;
+  status: 200;
+};
+
+export type getSequenceManifestResponseSuccess = getSequenceManifestResponse200 & {
+  headers: Headers;
+};
+export type getSequenceManifestResponse = getSequenceManifestResponseSuccess;
+
+export const getGetSequenceManifestUrl = (originId: string) => {
+  return `/videos/sequences/${originId}/manifest.mpd`;
+};
+
+export const getSequenceManifest = async (
+  originId: string,
+  options?: RequestInit,
+): Promise<getSequenceManifestResponse> => {
+  return client<getSequenceManifestResponse>(getGetSequenceManifestUrl(originId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export type getVideoSequenceInfoResponse200 = {
+  data: Blob;
+  status: 200;
+};
+
+export type getVideoSequenceInfoResponseSuccess = getVideoSequenceInfoResponse200 & {
+  headers: Headers;
+};
+export type getVideoSequenceInfoResponse = getVideoSequenceInfoResponseSuccess;
+
+export const getGetVideoSequenceInfoUrl = (originId: string) => {
+  return `/videos/sequences/${originId}/info`;
+};
+
+export const getVideoSequenceInfo = async (
+  originId: string,
+  options?: RequestInit,
+): Promise<getVideoSequenceInfoResponse> => {
+  return client<getVideoSequenceInfoResponse>(getGetVideoSequenceInfoUrl(originId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export type getSequenceDashAssetResponse200 = {
+  data: Blob;
+  status: 200;
+};
+
+export type getSequenceDashAssetResponseSuccess = getSequenceDashAssetResponse200 & {
+  headers: Headers;
+};
+export type getSequenceDashAssetResponse = getSequenceDashAssetResponseSuccess;
+
+export const getGetSequenceDashAssetUrl = (
+  originId: string,
+  videoId: string,
+  assetPath: string,
+) => {
+  return `/videos/sequences/${originId}/dash/${videoId}/${assetPath}`;
+};
+
+export const getSequenceDashAsset = async (
+  originId: string,
+  videoId: string,
+  assetPath: string,
+  options?: RequestInit,
+): Promise<getSequenceDashAssetResponse> => {
+  return client<getSequenceDashAssetResponse>(
+    getGetSequenceDashAssetUrl(originId, videoId, assetPath),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
