@@ -20,10 +20,15 @@ import {
   type VectorFormData,
 } from "@/features/detection-rules/components/settings-rule-creator";
 import {
-  useRules,
+  useDetectionTemplates,
+  useDetectedElements,
+  useCreateTemplate,
+  useUpdateTemplate,
+  useDeleteTemplate,
   type DetectionTemplateItem,
-} from "@/features/detection-rules/context/detection-rules-context";
+} from "@/features/detection-rules/hooks/use-detection-rules";
 import type { DetectionVectorDTO } from "@/models";
+import { useQueryClient } from "@tanstack/react-query";
 
 function createEmptyRule(defaultElementName = ""): RuleFormData {
   return {
@@ -46,8 +51,8 @@ function createEmptyTemplate(defaultElementName = ""): TemplateFormData {
 function templateToFormData(template: DetectionTemplateItem): TemplateFormData {
   return {
     name: template.name,
-    vectors: template.vectors.map((v) => ({
-      rules: v.rules.map((r) => ({
+    vectors: template.vectors.map((v: DetectionTemplateItem["vectors"][number]) => ({
+      rules: v.rules.map((r: DetectionTemplateItem["vectors"][number]["rules"][number]) => ({
         element_name: r.element_name,
         mode:
           r.range || (r.count_from != null && r.count_to != null)
@@ -85,35 +90,27 @@ interface SettingsWindowProps {
 }
 
 export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
-  const {
-    templates,
-    detectedElements,
-    loading,
-    elementsLoading,
-    saving,
-    error,
-    pageNumber,
-    totalPages,
-    totalElements,
-    loadRulesPage,
-    loadDetectedElements,
-    createTemplate,
-    updateTemplate,
-    removeTemplate,
-  } = useRules();
+  const [pageNumber, setPageNumber] = useState(0);
+  const pageSize = 8;
+
+  const queryClient = useQueryClient();
+  const { data: templatesData, isLoading: loading, error: rqError } = useDetectionTemplates(pageNumber, pageSize);
+  const { data: detectedElements = [], isLoading: elementsLoading } = useDetectedElements();
+  const createMutation = useCreateTemplate();
+  const updateMutation = useUpdateTemplate();
+  const deleteMutation = useDeleteTemplate();
+
+  const templates = templatesData?.content ?? [];
+  const totalPages = templatesData?.page?.totalPages ?? 0;
+  const totalElements = templatesData?.page?.totalElements ?? 0;
+  const saving = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+  const error = rqError?.message ?? null;
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingTemplateName, setEditingTemplateName] = useState<string | null>(null);
   const [formData, setFormData] = useState<TemplateFormData>(createEmptyTemplate());
 
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (open) {
-      void loadRulesPage(0);
-      void loadDetectedElements();
-    }
-  }, [open, loadRulesPage, loadDetectedElements]);
 
   useEffect(() => {
     if (!open) return;
@@ -133,11 +130,11 @@ export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
   }, [open, editorOpen, deleteTarget, onClose]);
 
   const handlePrevious = () => {
-    if (pageNumber > 0) void loadRulesPage(pageNumber - 1);
+    if (pageNumber > 0) setPageNumber(pageNumber - 1);
   };
 
   const handleNext = () => {
-    if (pageNumber + 1 < totalPages) void loadRulesPage(pageNumber + 1);
+    if (pageNumber + 1 < totalPages) setPageNumber(pageNumber + 1);
   };
 
   const handleCreate = () => {
@@ -154,8 +151,9 @@ export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
 
   const handleDelete = async (name: string) => {
     try {
-      await removeTemplate(name);
+      await deleteMutation.mutateAsync(name);
       setDeleteTarget(null);
+      await queryClient.invalidateQueries({ queryKey: ["detection-rules"] });
     } catch (err) {
       console.error("Failed to delete template:", err);
     }
@@ -165,18 +163,19 @@ export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
     try {
       const vectors = formDataToVectors(formData);
       if (editingTemplateName) {
-        await updateTemplate({
+        await updateMutation.mutateAsync({
           name: editingTemplateName,
           new_name: formData.name !== editingTemplateName ? formData.name : undefined,
           vectors,
         });
       } else {
-        await createTemplate({
+        await createMutation.mutateAsync({
           name: formData.name,
           vectors,
         });
       }
       setEditorOpen(false);
+      await queryClient.invalidateQueries({ queryKey: ["detection-rules"] });
     } catch (err) {
       console.error("Failed to save template:", err);
     }
@@ -238,9 +237,9 @@ export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
   const totalRows = 8;
 
   const summarizeRules = (template: DetectionTemplateItem) => {
-    const allRules = template.vectors.flatMap((v) => v.rules);
+    const allRules = template.vectors.flatMap((v: DetectionTemplateItem["vectors"][number]) => v.rules);
     if (allRules.length === 0) return "—";
-    const parts = allRules.slice(0, 3).map((r) => {
+    const parts = allRules.slice(0, 3).map((r: DetectionTemplateItem["vectors"][number]["rules"][number]) => {
       if (r.count_from != null && r.count_to != null) {
         return `${r.element_name} (${r.count_from}–${r.count_to})`;
       }

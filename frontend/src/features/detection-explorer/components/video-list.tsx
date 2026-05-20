@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { VideoPlayer } from "@/features/detection-explorer/components/video-player";
-import { useDetectionExplorerContext } from "@/features/detection-explorer/context/detection-explorer-context";
+import { useDetectionExplorer } from "@/features/detection-explorer/hooks/use-detection-explorer";
 import SettingsWindow from "@/features/detection-rules/components/settings-window";
 import { cn } from "@/lib/utils";
 
@@ -56,7 +56,7 @@ export function VideoList() {
     totalElements,
     loadVideosPage,
     deleteVideos,
-  } = useDetectionExplorerContext();
+  } = useDetectionExplorer();
 
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     key: "uploadDate",

@@ -4,14 +4,10 @@ import { useEffect } from "react";
 
 import { LoadingScreen } from "@/components/loading-screen";
 import { VideoList } from "@/features/detection-explorer/components/video-list";
-import {
-  DetectionExplorerProvider,
-  useDetectionExplorerContext,
-} from "@/features/detection-explorer/context/detection-explorer-context";
-import { RulesProvider } from "@/features/detection-rules/context/detection-rules-context";
+import { useDetectionExplorer } from "@/features/detection-explorer/hooks/use-detection-explorer";
 
 function PageContent() {
-  const { apiLoading, checkApiHealth, loadVideosPage, apiOk } = useDetectionExplorerContext();
+  const { apiLoading, checkApiHealth, loadVideosPage, apiOk } = useDetectionExplorer();
 
   useEffect(() => {
     const initialize = async () => {
@@ -51,11 +47,5 @@ function PageContent() {
 }
 
 export default function Home() {
-  return (
-    <DetectionExplorerProvider>
-      <RulesProvider>
-        <PageContent />
-      </RulesProvider>
-    </DetectionExplorerProvider>
-  );
+  return <PageContent />;
 }
