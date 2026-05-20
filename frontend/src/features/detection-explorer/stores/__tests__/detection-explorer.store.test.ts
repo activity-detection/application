@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { useDetectionExplorerStore } from "@/features/detection-explorer/stores/detection-explorer.store";
-import * as mediaController from "@/lib/endpoints/media-controller/media-controller";
 
-vi.mock("@/lib/endpoints/media-controller/media-controller", () => ({
+import * as mediaController from "@/api/media/openapi-definition";
+import { useDetectionExplorerStore } from "@/features/detection-explorer/stores/detection-explorer.store";
+
+vi.mock("@/api/media/openapi-definition", () => ({
   deleteVideo: vi.fn(),
   getVideoSequences: vi.fn(),
-  getVideoSequences1: vi.fn(),
+  getVideoSequence: vi.fn(),
 }));
 
 describe("DetectionExplorerStore", () => {
@@ -88,25 +89,25 @@ describe("DetectionExplorerStore", () => {
   describe("loadVideosPage", () => {
     it("should load videos successfully", async () => {
       const mockResponse = {
-        data: {
-          content: [
-            {
-              origin_id: "video-1",
-              parts: [
-                {
-                  id: "part-1",
-                  name: "Video 1",
-                  description: "Test video",
-                },
-              ],
-              sequence_upload_date: "2024-01-01T00:00:00Z",
-            },
-          ],
-          page: {
-            number: 0,
-            totalPages: 1,
-            totalElements: 1,
+        content: [
+          {
+            origin_id: "video-1",
+            parts: [
+              {
+                id: "part-1",
+                name: "Video 1",
+                description: "Test video",
+                upload_date: "2024-01-01T00:00:00Z",
+              },
+            ],
+            sequence_upload_date: "2024-01-01T00:00:00Z",
           },
+        ],
+        page: {
+          number: 0,
+          totalPages: 1,
+          totalElements: 1,
+          size: 10,
         },
       };
 
@@ -145,10 +146,8 @@ describe("DetectionExplorerStore", () => {
 
     it("should apply sorting and filters", async () => {
       const mockResponse = {
-        data: {
-          content: [],
-          page: { number: 0, totalPages: 0, totalElements: 0 },
-        },
+        content: [],
+        page: { number: 0, totalPages: 0, totalElements: 0, size: 10 },
       };
 
       vi.mocked(mediaController.getVideoSequences).mockResolvedValue(mockResponse);
@@ -171,19 +170,22 @@ describe("DetectionExplorerStore", () => {
 
     it("should extract description from first part with description", async () => {
       const mockResponse = {
-        data: {
-          content: [
-            {
-              origin_id: "video-1",
-              parts: [
-                { id: "part-1", name: "Video 1" },
-                { id: "part-2", name: "Video 1 Part 2", description: "This is the desc" },
-              ],
-              sequence_upload_date: "2024-01-01T00:00:00Z",
-            },
-          ],
-          page: { number: 0, totalPages: 1, totalElements: 1 },
-        },
+        content: [
+          {
+            origin_id: "video-1",
+            parts: [
+              { id: "part-1", name: "Video 1", upload_date: "2024-01-01T00:00:00Z" },
+              {
+                id: "part-2",
+                name: "Video 1 Part 2",
+                description: "This is the desc",
+                upload_date: "2024-01-01T00:00:01Z",
+              },
+            ],
+            sequence_upload_date: "2024-01-01T00:00:00Z",
+          },
+        ],
+        page: { number: 0, totalPages: 1, totalElements: 1, size: 10 },
       };
 
       vi.mocked(mediaController.getVideoSequences).mockResolvedValue(mockResponse);
@@ -199,23 +201,20 @@ describe("DetectionExplorerStore", () => {
   describe("deleteVideos", () => {
     it("should delete videos successfully", async () => {
       const mockSequenceResponse = {
-        data: {
-          origin_id: "video-1",
-          parts: [
-            { id: "part-1", name: "Video 1" },
-            { id: "part-2", name: "Video 1 Part 2" },
-          ],
-        },
+        origin_id: "video-1",
+        sequence_upload_date: "2024-01-01T00:00:00Z",
+        parts: [
+          { id: "part-1", name: "Video 1", upload_date: "2024-01-01T00:00:00Z" },
+          { id: "part-2", name: "Video 1 Part 2", upload_date: "2024-01-01T00:00:01Z" },
+        ],
       };
 
-      vi.mocked(mediaController.getVideoSequences1).mockResolvedValue(mockSequenceResponse);
-      vi.mocked(mediaController.deleteVideo).mockResolvedValue({});
+      vi.mocked(mediaController.getVideoSequence).mockResolvedValue(mockSequenceResponse);
+      vi.mocked(mediaController.deleteVideo).mockResolvedValue(new Blob());
 
       const mockListResponse = {
-        data: {
-          content: [],
-          page: { number: 0, totalPages: 0, totalElements: 0 },
-        },
+        content: [],
+        page: { number: 0, totalPages: 0, totalElements: 0, size: 10 },
       };
 
       vi.mocked(mediaController.getVideoSequences).mockResolvedValue(mockListResponse);
@@ -225,7 +224,7 @@ describe("DetectionExplorerStore", () => {
 
       await store.deleteVideos(selectedIds);
 
-      expect(mediaController.getVideoSequences1).toHaveBeenCalledWith("video-1");
+      expect(mediaController.getVideoSequence).toHaveBeenCalledWith("video-1");
       expect(mediaController.deleteVideo).toHaveBeenCalledWith("part-1");
       expect(mediaController.deleteVideo).toHaveBeenCalledWith("part-2");
 
@@ -234,9 +233,10 @@ describe("DetectionExplorerStore", () => {
     });
 
     it("should handle delete error", async () => {
-      vi.mocked(mediaController.getVideoSequences1).mockResolvedValue({
+      vi.mocked(mediaController.getVideoSequence).mockResolvedValue({
         origin_id: "video-1",
-        parts: [{ id: "part-1" }],
+        sequence_upload_date: "2024-01-01T00:00:00Z",
+        parts: [{ id: "part-1", name: "Video 1", upload_date: "2024-01-01T00:00:00Z" }],
       });
 
       vi.mocked(mediaController.deleteVideo).mockRejectedValue(
@@ -260,26 +260,23 @@ describe("DetectionExplorerStore", () => {
 
       await store.deleteVideos(selectedIds);
 
-      expect(mediaController.getVideoSequences1).not.toHaveBeenCalled();
+      expect(mediaController.getVideoSequence).not.toHaveBeenCalled();
       expect(mediaController.deleteVideo).not.toHaveBeenCalled();
     });
 
     it("should refetch videos after deletion", async () => {
       const mockSequenceResponse = {
-        data: {
-          origin_id: "video-1",
-          parts: [{ id: "part-1" }],
-        },
+        origin_id: "video-1",
+        sequence_upload_date: "2024-01-01T00:00:00Z",
+        parts: [{ id: "part-1", name: "Video 1", upload_date: "2024-01-01T00:00:00Z" }],
       };
 
-      vi.mocked(mediaController.getVideoSequences1).mockResolvedValue(mockSequenceResponse);
-      vi.mocked(mediaController.deleteVideo).mockResolvedValue({});
+      vi.mocked(mediaController.getVideoSequence).mockResolvedValue(mockSequenceResponse);
+      vi.mocked(mediaController.deleteVideo).mockResolvedValue(new Blob());
 
       const mockListResponse = {
-        data: {
-          content: [],
-          page: { number: 0, totalPages: 0, totalElements: 0 },
-        },
+        content: [],
+        page: { number: 0, totalPages: 0, totalElements: 0, size: 10 },
       };
 
       vi.mocked(mediaController.getVideoSequences).mockResolvedValue(mockListResponse);

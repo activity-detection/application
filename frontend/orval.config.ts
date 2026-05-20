@@ -1,28 +1,67 @@
 import { defineConfig } from "orval";
 
+const sharedInput = {
+  target: "http://localhost:8080/v3/api-docs",
+  override: {
+    transformer: "./orval.transformer.ts",
+  },
+} as const;
+
+const sharedOutput = {
+  client: "react-query",
+  httpClient: "axios",
+  namingConvention: "kebab-case",
+  schemas: "./src/types/api",
+  mock: {
+    type: "msw",
+    useExamples: true,
+  },
+  prettier: true,
+  override: {
+    mutator: {
+      path: "./src/lib/orval-axios.ts",
+      name: "orvalAxiosInstance",
+    },
+    query: {
+      useQuery: true,
+      useMutation: true,
+      useInfinite: true,
+      signal: true,
+      shouldExportQueryKey: true,
+      useOperationIdAsQueryKey: true,
+    },
+  },
+} as const;
+
 export default defineConfig({
-  activityDetectorApi: {
+  detectionRulesApi: {
     input: {
-      target: "http://localhost:8080/v3/api-docs",
-      override: {
-        transformer: "./orval.transformer.ts",
+      ...sharedInput,
+      filters: {
+        mode: "include",
+        tags: ["detection-rules-controller"],
       },
     },
     output: {
-      mode: "tags-split",
-      target: "./src/lib/endpoints",
-      schemas: "./src/models",
-      client: "fetch",
-      httpClient: "fetch",
-      mock: false,
+      ...sharedOutput,
+      mode: "split",
+      target: "./src/api/detection-rules",
       clean: true,
-      prettier: true,
-      override: {
-        mutator: {
-          path: "./src/lib/client.ts",
-          name: "client",
-        },
+    },
+  },
+  mediaApi: {
+    input: {
+      ...sharedInput,
+      filters: {
+        mode: "include",
+        tags: ["media-controller"],
       },
+    },
+    output: {
+      ...sharedOutput,
+      mode: "split",
+      target: "./src/api/media",
+      clean: false,
     },
   },
 });

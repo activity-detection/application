@@ -4,7 +4,7 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
-import type { VideoSequencePart } from "./videoSequencePart";
+import type { VideoSequencePart } from "./video-sequence-part";
 
 export interface VideoSequence {
   origin_id: string;

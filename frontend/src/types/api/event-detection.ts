@@ -4,7 +4,7 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
-import type { DetectionTimestamp } from "./detectionTimestamp";
+import type { DetectionTimestamp } from "./detection-timestamp";
 
 export interface EventDetection {
   /** @minLength 1 */

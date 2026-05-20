@@ -4,8 +4,8 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
-import type { DetectionTimestamp } from "./detectionTimestamp";
-import type { ObjectDetection } from "./objectDetection";
+import type { DetectionTimestamp } from "./detection-timestamp";
+import type { ObjectDetection } from "./object-detection";
 
 export interface ObjectDetections {
   objects: ObjectDetection[];

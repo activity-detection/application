@@ -4,11 +4,10 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
-import type { DetectionVectorDTO } from "./detectionVectorDTO";
+import type { DetectionVectorDTO } from "./detection-vector-dt-o";
 
-export interface EditDetectionTemplateRequest {
+export interface CreateDetectionTemplateRequest {
   name: string;
-  new_name?: string;
   /** @minItems 1 */
   vectors: DetectionVectorDTO[];
 }

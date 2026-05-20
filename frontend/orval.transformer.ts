@@ -255,6 +255,10 @@ function patchSequenceSchemas(spec: OpenApiLike) {
   }
 
   const sequenceGet = spec.paths?.["/videos/sequences/{originId}"]?.get;
+  if (sequenceGet) {
+    sequenceGet.operationId = "getVideoSequence";
+  }
+
   if (sequenceGet?.responses?.["200"]) {
     sequenceGet.responses["200"] = {
       ...sequenceGet.responses["200"],

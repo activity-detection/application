@@ -4,8 +4,8 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
-import type { VideoSequence } from "./videoSequence";
-import type { VideoSequencePagePage } from "./videoSequencePagePage";
+import type { VideoSequence } from "./video-sequence";
+import type { VideoSequencePagePage } from "./video-sequence-page-page";
 
 export interface VideoSequencePage {
   content: VideoSequence[];

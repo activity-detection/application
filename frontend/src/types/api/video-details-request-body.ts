@@ -4,8 +4,8 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
-import type { EventDetection } from "./eventDetection";
-import type { ObjectDetections } from "./objectDetections";
+import type { EventDetection } from "./event-detection";
+import type { ObjectDetections } from "./object-detections";
 
 export interface VideoDetailsRequestBody {
   events?: EventDetection[];

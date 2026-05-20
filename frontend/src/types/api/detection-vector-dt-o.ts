@@ -4,7 +4,7 @@
  * OpenAPI definition
  * OpenAPI spec version: v0
  */
-import type { DetectionRuleDTO } from "./detectionRuleDTO";
+import type { DetectionRuleDTO } from "./detection-rule-dt-o";
 
 export interface DetectionVectorDTO {
   vector_id?: number;

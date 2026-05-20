@@ -1,12 +1,13 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
+
 import {
   addDetectionTemplate,
   deleteDetectionTemplate,
   editDetectionTemplate,
   getDetectedElements,
   getDetectionTemplates,
-} from "@/lib/endpoints/detection-rules-controller/detection-rules-controller";
-import type { DetectionVectorDTO } from "@/models";
+} from "@/api/detection-rules/openapi-definition";
+import type { DetectionVectorDTO } from "@/types/api";
 
 export type DetectionTemplateItem = {
   name: string;
@@ -38,17 +39,6 @@ type DetectionTemplatesPage = {
   };
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function unwrapPayload<T>(value: unknown): T {
-  if (isRecord(value) && "data" in value) {
-    return value.data as T;
-  }
-  return value as T;
-}
-
 const RULES_QUERY_KEY = ["detection-rules"];
 const ELEMENTS_QUERY_KEY = ["detected-elements"];
 
@@ -59,6 +49,18 @@ export function useDetectionTemplates(page: number, pageSize: number = 8) {
     queryKey,
     queryFn: async () => {
       const response = (await getDetectionTemplates({ page, size: pageSize })) as unknown;
+      if (response instanceof Blob) {
+        const rawText = await response.text();
+        const parsed = JSON.parse(rawText) as unknown;
+        if (
+          parsed &&
+          typeof parsed === "object" &&
+          "content" in parsed &&
+          Array.isArray((parsed as DetectionTemplatesPage).content)
+        ) {
+          return parsed as DetectionTemplatesPage;
+        }
+      }
 
       if (!response || typeof response !== "object") {
         throw new Error("Invalid response from API");

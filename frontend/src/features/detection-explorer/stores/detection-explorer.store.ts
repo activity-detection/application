@@ -1,10 +1,11 @@
 import { create } from "zustand";
+
 import {
   deleteVideo,
+  getVideoSequence,
   getVideoSequences,
-  getVideoSequences1,
-} from "@/lib/endpoints/media-controller/media-controller";
-import type { VideoSequencePage } from "@/models";
+} from "@/api/media/openapi-definition";
+import type { VideoSequencePage } from "@/types/api";
 
 type VideoItem = {
   id: string;
@@ -177,7 +178,7 @@ export const useDetectionExplorerStore = create<DetectionExplorerStore>((set, ge
       const resolvedPartIds = await Promise.all(
         ids.map(async (id) => {
           try {
-            const sequenceResponse = await getVideoSequences1(id);
+            const sequenceResponse = await getVideoSequence(id);
             const sequence = unwrapPayload<VideoSequencePage["content"][number]>(
               sequenceResponse,
             );

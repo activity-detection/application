@@ -3,17 +3,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import shaka from "shaka-player";
 
-import { Card, CardContent } from "@/components/ui/card";
 import {
-  getGetVideoDashManifestUrl,
-  getGetSequenceManifestUrl,
   getVideoInfo,
   getVideoSequenceInfo,
   getVideoSequences,
-} from "@/lib/endpoints/media-controller/media-controller";
+} from "@/api/media/openapi-definition";
+import { Card, CardContent } from "@/components/ui/card";
 import { getApiBaseUrl } from "@/lib/client";
 import { cn } from "@/lib/utils";
-import type { VideoSequence, VideoSequencePage, VideoSequencePart } from "@/models";
+import type { VideoSequence, VideoSequencePage, VideoSequencePart } from "@/types/api";
 
 interface VideoPlayerProps {
   videoId: string | null;
@@ -119,6 +117,14 @@ function buildApiUrl(path: string) {
   return new URL(normalizedPath, `${baseUrl}/`).toString();
 }
 
+function getVideoDashManifestUrl(fileIdentifier: string) {
+  return `/videos/${fileIdentifier}/manifest.mpd`;
+}
+
+function getSequenceManifestUrl(originId: string) {
+  return `/videos/sequences/${originId}/manifest.mpd`;
+}
+
 function getSequenceDescription(
   resolvedSequence: VideoSequence | null,
   selectedPart: VideoSequencePart | undefined,
@@ -218,7 +224,14 @@ export function VideoPlayer({
         const detailsResponse = hasSequence
           ? await getVideoSequenceInfo(manifestId)
           : await getVideoInfo(manifestId);
-        const detailsPayload = unwrapPayload(detailsResponse) as VideoDetailsPayload;
+        
+        let detailsPayload: VideoDetailsPayload;
+        if (detailsResponse instanceof Blob) {
+          const jsonText = await detailsResponse.text();
+          detailsPayload = JSON.parse(jsonText) as VideoDetailsPayload;
+        } else {
+          detailsPayload = unwrapPayload(detailsResponse) as VideoDetailsPayload;
+        }
 
         if (cancelled) {
           return;
@@ -235,8 +248,8 @@ export function VideoPlayer({
         setVideoDetails(detailsPayload ?? null);
 
         const manifestPath = hasSequence
-          ? getGetSequenceManifestUrl(manifestId)
-          : getGetVideoDashManifestUrl(manifestId);
+          ? getSequenceManifestUrl(manifestId)
+          : getVideoDashManifestUrl(manifestId);
         const resolvedManifestUrl = buildApiUrl(manifestPath);
         setManifestUrl(resolvedManifestUrl);
       } catch (error) {

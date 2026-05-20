@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,8 +28,7 @@ import {
   useDeleteTemplate,
   type DetectionTemplateItem,
 } from "@/features/detection-rules/hooks/use-detection-rules";
-import type { DetectionVectorDTO } from "@/models";
-import { useQueryClient } from "@tanstack/react-query";
+import type { DetectionVectorDTO } from "@/types/api";
 
 function createEmptyRule(defaultElementName = ""): RuleFormData {
   return {

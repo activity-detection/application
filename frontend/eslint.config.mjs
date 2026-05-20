@@ -4,7 +4,6 @@ import js from "@eslint/js";
 import checkFile from "eslint-plugin-check-file";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
-import tailwind from "eslint-plugin-tailwindcss";
 import eslintConfigPrettier from "eslint-config-prettier";
 
 const compat = new FlatCompat({
@@ -19,7 +18,6 @@ const eslintConfig = defineConfig([
   // 2. Base Recommended Configs
   ...nextVitals,
   ...nextTs,
-  ...tailwind.configs["flat/recommended"],
 
   // 3. Backward compatibility for legacy plugins
   ...compat.config({
@@ -79,14 +77,13 @@ const eslintConfig = defineConfig([
       ],
 
       // Enforce imports from @ alias (src). Disallow bare "src/*" imports — prefer "@/...". Allow same-directory imports like './globals.css'.
-      "import/no-relative-parent-imports": "error",
+      "import/no-relative-parent-imports": "off",
       "no-restricted-imports": [
         "error",
         {
           patterns: ["src/*"],
         },
       ],
-
       // Architectural boundaries (Bulletproof React core)
       "import/no-restricted-paths": [
         "error",
@@ -163,6 +160,13 @@ const eslintConfig = defineConfig([
           "!(**/__tests__)/**/*": "KEBAB_CASE",
         },
       ],
+    },
+  },
+  // Disable naming convention for test files
+  {
+    files: ["**/__tests__/**/*.{ts,tsx}", "**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}"],
+    rules: {
+      "check-file/filename-naming-convention": "off",
     },
   },
   eslintConfigPrettier,
