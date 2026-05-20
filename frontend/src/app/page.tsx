@@ -21,12 +21,8 @@ function PageContent() {
     void initialize();
   }, [checkApiHealth, loadVideosPage]);
 
-  if (apiLoading) {
+  if (apiLoading || apiOk !== true) {
     return <LoadingScreen />;
-  }
-
-  if (!apiOk) {
-    throw new Error("Api is not working");
   }
 
   return (

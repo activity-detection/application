@@ -2,3 +2,5 @@
 tests/
 .aider*
 **/node_modules/
+**/.playwright-results
+.playwright-mcp

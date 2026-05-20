@@ -74,7 +74,7 @@ export function DetectionExplorerProvider({ children }: { children: ReactNode })
 
   const checkApiHealth = useCallback(async () => {
     setApiLoading(true);
-    const maxAttempts = 3;
+    const maxAttempts = 10;
     let lastError: string | null = null;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -97,7 +97,7 @@ export function DetectionExplorerProvider({ children }: { children: ReactNode })
       }
 
       if (attempt < maxAttempts) {
-        await new Promise((resolve) => setTimeout(resolve, attempt * 300));
+        await new Promise((resolve) => setTimeout(resolve, attempt * 500));
       }
     }
 

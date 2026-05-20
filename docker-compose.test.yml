@@ -33,6 +33,29 @@ services:
       - "8080:8080"
     volumes:
       - ./backend/java/src/main/resources:/app/config
+    healthcheck:
+      test: [ "CMD-SHELL", 'wget -qO- http://localhost:8080/actuator/health | grep -q ''"status":"UP"''' ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+
+  upload-videos:
+    image: mcr.microsoft.com/playwright:v1.60.0-jammy
+    container_name: ac_video_uploader
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      CI: 1
+      TEST_BASE_URL: http://backend:8080
+      API_PREFIX: /
+    networks:
+      - backend-net
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: bash -lc "./upload_videos.sh"
 
   frontend:
     build:
@@ -40,9 +63,12 @@ services:
       dockerfile: dev.Dockerfile
     container_name: ac_frontend
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+      upload-videos:
+        condition: service_completed_successfully
     environment:
-      - NEXT_PUBLIC_API_BASE_URL=http://localhost/api
+      - NEXT_PUBLIC_API_BASE_URL=http://nginx/api
     networks:
       - frontend-net
     ports:
@@ -76,8 +102,8 @@ services:
       - ./frontend:/app
     environment:
       - CI=1
+      - PLAYWRIGHT_BASE_URL=http://nginx
     command: /bin/bash -c "npm install -D @playwright/test && npx playwright test"
-
 volumes:
   ac-data-vol:
 
