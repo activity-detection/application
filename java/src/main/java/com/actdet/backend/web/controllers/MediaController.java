@@ -86,6 +86,12 @@ public class MediaController {
         return ResponseEntity.ok().build();
     }
 
+    @DeleteMapping("/sequences/{fileIdentifier}")
+    public ResponseEntity<?> deleteVideoSequence(@PathVariable("fileIdentifier") String originId) {
+        videoService.deleteVideoSequenceFromDatabse(originId);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/{fileIdentifier}/info")
     public ResponseEntity<?> getVideoInfo(@PathVariable("fileIdentifier") String fileIdentifier) {
         return ResponseEntity.ok(videoService.getVideoDetails(fileIdentifier));

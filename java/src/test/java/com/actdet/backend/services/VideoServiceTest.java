@@ -23,8 +23,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -232,9 +235,48 @@ class VideoServiceTest {
         @Test
         void shouldDeleteAndCountCorrectNumberOfUntrackedFiles() throws IOException {
             // given
-            String fileName1 = "film1_wbazenieistniejacynadysku.mov";
-            String fileName2 = "film2_wbazenieistniejacynadysku.mov";
+            String fileName1 = "film1_wbaze_nieistniejacynadysku.mov";
+            String fileName2 = "film2_wbaze_nieistniejacynadysku.mov";
             String fileName3 = "film3.mov";
+            UUID uuid1 = UUID.randomUUID();
+            UUID uuid2 = UUID.randomUUID();
+            UUID uuid3 = UUID.randomUUID();
+            UUID originId = uuid1;
+            Video video1 = new Video("video1", "desc", fileName1, null, null);
+            video1.setId(uuid1);
+            video1.setOriginId(originId);
+            Video video2 = new Video("video2", "desc", fileName2, uuid1, null);
+            video2.setId(uuid2);
+            video2.setOriginId(originId);
+            Video video3 = new Video("video3", "desc", fileName3, uuid2, null);
+            video3.setId(uuid3);
+            video3.setOriginId(originId);
+
+            List<Video> videoSequence = new ArrayList<>(List.of(video1, video2, video3));
+
+            when(videoRepository.findVideoSequenceByOriginId(any(UUID.class)))
+                    .thenAnswer(inv -> {
+                        UUID requestedOrigin = inv.getArgument(0);
+
+                        return videoSequence.stream()
+                                .filter(v -> requestedOrigin.equals(v.getOriginId()))
+                                .collect(Collectors.toCollection(ArrayList::new));
+                    });
+
+            when(videoRepository.findByPathToFile(anyString()))
+                    .thenAnswer(inv -> {
+                        String path = inv.getArgument(0);
+                        return videoSequence.stream()
+                                .filter(v -> v.getPathToFile().equals(path))
+                                .findFirst();
+                    });
+
+            doAnswer(inv -> {
+                Video video = inv.getArgument(0);
+                videoSequence.removeIf(v -> v.getId().equals(video.getId()));
+                return null;
+            }).when(videoRepository).delete(any(Video.class));
+
 
 
             Path fileToDelete1 = tempDir.resolve(fileName1);
@@ -247,15 +289,19 @@ class VideoServiceTest {
             Assertions.assertThat(fileToDelete3).exists();
 
             when(videoRepository.streamAllVideoPaths()).thenReturn(Stream.of(fileName1, fileName2, fileName3));
-
             // when
             long numberOfDeletedFiles = videoService.deleteNonExistentVideoRecords();
             // then
             Assertions.assertThat(fileToDelete1).doesNotExist();
             Assertions.assertThat(fileToDelete2).doesNotExist();
             Assertions.assertThat(fileToDelete3).exists();
-            verify(videoRepository, times(1)).deleteVideoByPathToFile(fileName1);
-            verify(videoRepository, times(1)).deleteVideoByPathToFile(fileName2);
+            verify(videoRepository).delete(argThat(v ->
+                    v.getId().equals(uuid1)
+            ));
+
+            verify(videoRepository).delete(argThat(v ->
+                    v.getId().equals(uuid2)
+            ));
             assertEquals(2, numberOfDeletedFiles, "Number of deleted files is incorrect");
         }
 
