@@ -1,0 +1,26 @@
+#!/bin/sh
+
+cd ./frontend
+
+# Run linting
+npm run lint
+if [ $? -ne 0 ]; then
+  echo "Frontend: Linting failed"
+  exit 1
+fi
+
+# Run type checking
+npm run check-types
+if [ $? -ne 0 ]; then
+  echo "Frontend: Type checking failed"
+  exit 1
+fi
+
+# Run tests
+npm run test
+if [ $? -ne 0 ]; then
+  echo "Frontend: Unit tests failed"
+  exit 1
+fi
+
+echo "All checks passed!"
