@@ -22,7 +22,8 @@ dev:
 	docker-compose -f docker-compose.dev.yml up
 
 test:
-	docker-compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from playwright
+	docker compose -f docker-compose.test.yml up --exit-code-from playwright --quiet-build 
+	@docker compose -f docker-compose.test.yml down --remove-orphans
 
 prod-build:
 	docker compose up --build
