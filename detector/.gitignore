@@ -3,8 +3,10 @@
 .env.*
 
 # Model weights and engine files
+**/*.pth*
 **/*.pth
 **/*.pt
+**/*.pt*
 **/*.engine
 **/*.onnx
 **/runs/
