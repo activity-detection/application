@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import shaka from "shaka-player";
 
+import { Card, CardContent } from "@/components/ui/card";
 import {
   getVideoInfo,
   getVideoSequenceInfo,
   getVideoSequences,
-} from "@/api/media/openapi-definition";
-import { Card, CardContent } from "@/components/ui/card";
+} from "@/features/detection-explorer/api/openapi-definition";
 import { getApiBaseUrl } from "@/lib/client";
 import { cn } from "@/lib/utils";
 import type { VideoSequence, VideoSequencePage, VideoSequencePart } from "@/types/api";

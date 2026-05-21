@@ -38,7 +38,7 @@ public class GlobalControllerExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(getBody(ex));
     }
 
-    @ExceptionHandler({IOException.class, FileSavingException.class, IllegalStateException.class})
+    @ExceptionHandler({IOException.class, FileSavingException.class, IllegalStateException.class, ReferencedVideoException.class})
     public ResponseEntity<?> handleIntervalServerError(Exception ex){
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(getBody(ex));
     }

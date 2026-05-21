@@ -83,6 +83,8 @@ public class VideoFilesDatabaseSyncService {
         logger.info("Watcher stopped.");
     }
 
+    //Mozna w przyszlosci jeszcze zrobic, że jeżeliby były popsute sekwencje
+    //np. pod wzgledem tego ze origin_id w sekwencji sie nie zgadza (z pododu np. usuniecia) to jest podejmowana próba ich naprawy
 
     @Scheduled(fixedDelay = 6, timeUnit = TimeUnit.HOURS)
     protected void syncData() {

@@ -24,9 +24,6 @@ import type {
   UseQueryResult,
 } from "@tanstack/react-query";
 
-
-import { orvalAxiosInstance } from "@/lib/orval-axios";
-import type { ErrorType, BodyType } from "@/lib/orval-axios";
 import type {
   GetVideoSequencesParams,
   GetVideosParams,
@@ -36,6 +33,9 @@ import type {
   VideoSequence,
   VideoSequencePage,
 } from "@/types/api";
+
+import { orvalAxiosInstance } from "@/lib/orval-axios";
+import type { ErrorType, BodyType } from "@/lib/orval-axios";
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
@@ -564,7 +564,7 @@ export const deleteVideo = (
   signal?: AbortSignal,
 ) => {
   return orvalAxiosInstance<Blob>(
-    { url: `/videos/${fileIdentifier}`, method: "DELETE", responseType: "blob", signal },
+    { url: `/videos/sequences/${fileIdentifier}`, method: "DELETE", responseType: "blob", signal },
     options,
   );
 };
@@ -2585,3 +2585,76 @@ export function useGetSequenceDashAsset<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+export const deleteVideoSequence = (
+  fileIdentifier: string,
+  options?: SecondParameter<typeof orvalAxiosInstance>,
+  signal?: AbortSignal,
+) => {
+  return orvalAxiosInstance<Blob>(
+    { url: `/videos/sequences/${fileIdentifier}`, method: "DELETE", responseType: "blob", signal },
+    options,
+  );
+};
+
+export const getDeleteVideoSequenceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteVideoSequence>>,
+    TError,
+    { fileIdentifier: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof orvalAxiosInstance>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteVideoSequence>>,
+  TError,
+  { fileIdentifier: string },
+  TContext
+> => {
+  const mutationKey = ["deleteVideoSequence"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteVideoSequence>>,
+    { fileIdentifier: string }
+  > = (props) => {
+    const { fileIdentifier } = props ?? {};
+
+    return deleteVideoSequence(fileIdentifier, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteVideoSequenceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteVideoSequence>>
+>;
+
+export type DeleteVideoSequenceMutationError = ErrorType<unknown>;
+
+export const useDeleteVideoSequence = <TError = ErrorType<unknown>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof deleteVideoSequence>>,
+      TError,
+      { fileIdentifier: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof orvalAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof deleteVideoSequence>>,
+  TError,
+  { fileIdentifier: string },
+  TContext
+> => {
+  return useMutation(getDeleteVideoSequenceMutationOptions(options), queryClient);
+};

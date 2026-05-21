@@ -1,7 +1,6 @@
 package com.actdet.backend.data.repositories;
 
 import com.actdet.backend.data.entities.Video;
-import org.springframework.cglib.core.Local;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -33,7 +32,7 @@ public interface VideoRepository extends JpaRepository<Video, UUID> {
     Page<Video> findAllByUploadDateGreaterThanEqualAndUploadDateLessThanEqual(Pageable pageable, LocalDateTime uploadDateIsGreaterThan, LocalDateTime uploadDateIsLessThan);
 
     @Query("SELECT v.id FROM Video v WHERE v.pathToFile = :pathToFile")
-    Optional<UUID> findByPathToFile(@Param("pathToFile") String pathToFile);
+    Optional<UUID> findVideoIdByPathToFile(@Param("pathToFile") String pathToFile);
 
     @Query("SELECT v.id FROM Video v WHERE v.referencedVideoId IS NULL " +
             "AND v.uploadDate >= :dateFrom AND v.uploadDate <= :dateTo")
@@ -45,4 +44,6 @@ public interface VideoRepository extends JpaRepository<Video, UUID> {
 
     @Query("SELECT v FROM Video v WHERE v.originId = :originId")
     List<Video> findVideoSequenceByOriginId(@Param("originId") UUID originId);
+
+    Optional<Video> findByPathToFile(String pathToFile);
 }

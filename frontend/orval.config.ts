@@ -45,7 +45,7 @@ export default defineConfig({
     output: {
       ...sharedOutput,
       mode: "split",
-      target: "./src/api/detection-rules",
+      target: "./src/features/detection-rules/api",
       clean: true,
     },
   },
@@ -60,7 +60,7 @@ export default defineConfig({
     output: {
       ...sharedOutput,
       mode: "split",
-      target: "./src/api/media",
+      target: "./src/features/detection-explorer/api",
       clean: false,
     },
   },

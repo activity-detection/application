@@ -5,6 +5,7 @@
  * OpenAPI spec version: v0
  */
 import { faker } from "@faker-js/faker";
+
 import { HttpResponse, http } from "msw";
 import type { RequestHandlerOptions } from "msw";
 
@@ -87,6 +88,8 @@ export const getGetSequenceManifestResponseMock = (): string => faker.word.sampl
 export const getGetVideoSequenceInfoResponseMock = (): ArrayBuffer => ({});
 
 export const getGetSequenceDashAssetResponseMock = (): ArrayBuffer => ({});
+
+export const getDeleteVideoSequenceResponseMock = (): ArrayBuffer => ({});
 
 export const getUploadVideoMockHandler = (
   overrideResponse?:
@@ -376,6 +379,32 @@ export const getGetSequenceDashAssetMockHandler = (
     options,
   );
 };
+
+export const getDeleteVideoSequenceMockHandler = (
+  overrideResponse?:
+    | ArrayBuffer
+    | ((
+        info: Parameters<Parameters<typeof http.delete>[1]>[0],
+      ) => Promise<ArrayBuffer> | ArrayBuffer),
+  options?: RequestHandlerOptions,
+) => {
+  return http.delete(
+    "*/videos/sequences/:fileIdentifier",
+    async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+      const binaryBody =
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getDeleteVideoSequenceResponseMock();
+      return HttpResponse.arrayBuffer(
+        binaryBody instanceof ArrayBuffer ? binaryBody : new ArrayBuffer(0),
+        { status: 200, headers: { "Content-Type": "application/octet-stream" } },
+      );
+    },
+    options,
+  );
+};
 export const getOpenAPIDefinitionMock = () => [
   getUploadVideoMockHandler(),
   getGetVideosMockHandler(),
@@ -389,4 +418,5 @@ export const getOpenAPIDefinitionMock = () => [
   getGetSequenceManifestMockHandler(),
   getGetVideoSequenceInfoMockHandler(),
   getGetSequenceDashAssetMockHandler(),
+  getDeleteVideoSequenceMockHandler(),
 ];

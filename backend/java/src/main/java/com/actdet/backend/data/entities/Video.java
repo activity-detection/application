@@ -48,10 +48,10 @@ public class Video {
     @Column(name = "video_path", length = 255, nullable = false, unique = true)
     private String pathToFile;
 
-    @Column(name = "referenced_video_id", columnDefinition = "uuid", nullable = true)
+    @Column(name = "referenced_video_id", columnDefinition = "uuid", nullable = true, unique = true)
     private UUID referencedVideoId;
 
-    @Column(name = "origin_id", insertable = false, updatable = false)
+    @Column(name = "origin_id", insertable = true, updatable = true)
     private UUID originId;
 
     @OneToOne(

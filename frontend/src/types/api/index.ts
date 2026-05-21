@@ -9,6 +9,7 @@ export * from "./add-detection-template200";
 export * from "./create-detection-template-request";
 export * from "./delete-detection-template-params";
 export * from "./delete-detection-template200";
+export * from "./delete-video-sequence200";
 export * from "./delete-video200";
 export * from "./detection-rule-dt-o";
 export * from "./detection-timestamp";

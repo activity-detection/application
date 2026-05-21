@@ -1,10 +1,9 @@
 import { create } from "zustand";
 
 import {
-  deleteVideo,
-  getVideoSequence,
+  deleteVideoSequence,
   getVideoSequences,
-} from "@/api/media/openapi-definition";
+} from "@/features/detection-explorer/api/openapi-definition";
 import type { VideoSequencePage } from "@/types/api";
 
 type VideoItem = {
@@ -175,22 +174,8 @@ export const useDetectionExplorerStore = create<DetectionExplorerStore>((set, ge
     try {
       set({ videosLoading: true, error: null });
 
-      const resolvedPartIds = await Promise.all(
-        ids.map(async (id) => {
-          try {
-            const sequenceResponse = await getVideoSequence(id);
-            const sequence = unwrapPayload<VideoSequencePage["content"][number]>(
-              sequenceResponse,
-            );
-            return Array.isArray(sequence.parts) ? sequence.parts.map((part) => part.id) : [id];
-          } catch {
-            return [id];
-          }
-        }),
-      );
-      const uniquePartIds = Array.from(new Set(resolvedPartIds.flat()));
+      await Promise.all(ids.map((id) => deleteVideoSequence(id)));
 
-      await Promise.all(uniquePartIds.map((partId) => deleteVideo(partId)));
       const pageNumber = get().pageNumber;
       await get().loadVideosPage(pageNumber, options?.sort, options?.filters);
     } catch (err) {

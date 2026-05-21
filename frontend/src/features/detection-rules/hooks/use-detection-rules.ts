@@ -6,7 +6,7 @@ import {
   editDetectionTemplate,
   getDetectedElements,
   getDetectionTemplates,
-} from "@/api/detection-rules/openapi-definition";
+} from "@/features/detection-rules/api/openapi-definition";
 import type { DetectionVectorDTO } from "@/types/api";
 
 export type DetectionTemplateItem = {

@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-import * as mediaController from "@/api/media/openapi-definition";
+import * as mediaController from "@/features/detection-explorer/api/openapi-definition";
 import { useDetectionExplorerStore } from "@/features/detection-explorer/stores/detection-explorer.store";
 
-vi.mock("@/api/media/openapi-definition", () => ({
+vi.mock("@/features/detection-explorer/api/openapi-definition", () => ({
+  deleteVideoSequence: vi.fn(),
   deleteVideo: vi.fn(),
   getVideoSequences: vi.fn(),
   getVideoSequence: vi.fn(),
@@ -210,7 +211,7 @@ describe("DetectionExplorerStore", () => {
       };
 
       vi.mocked(mediaController.getVideoSequence).mockResolvedValue(mockSequenceResponse);
-      vi.mocked(mediaController.deleteVideo).mockResolvedValue(new Blob());
+      vi.mocked(mediaController.deleteVideoSequence).mockResolvedValue(new Blob());
 
       const mockListResponse = {
         content: [],
@@ -224,9 +225,8 @@ describe("DetectionExplorerStore", () => {
 
       await store.deleteVideos(selectedIds);
 
-      expect(mediaController.getVideoSequence).toHaveBeenCalledWith("video-1");
-      expect(mediaController.deleteVideo).toHaveBeenCalledWith("part-1");
-      expect(mediaController.deleteVideo).toHaveBeenCalledWith("part-2");
+      expect(mediaController.getVideoSequence).not.toHaveBeenCalled();
+      expect(mediaController.deleteVideoSequence).toHaveBeenCalledWith("video-1");
 
       const state = useDetectionExplorerStore.getState();
       expect(state.videosLoading).toBe(false);
@@ -239,7 +239,7 @@ describe("DetectionExplorerStore", () => {
         parts: [{ id: "part-1", name: "Video 1", upload_date: "2024-01-01T00:00:00Z" }],
       });
 
-      vi.mocked(mediaController.deleteVideo).mockRejectedValue(
+      vi.mocked(mediaController.deleteVideoSequence).mockRejectedValue(
         new Error("Delete failed"),
       );
 
@@ -261,7 +261,7 @@ describe("DetectionExplorerStore", () => {
       await store.deleteVideos(selectedIds);
 
       expect(mediaController.getVideoSequence).not.toHaveBeenCalled();
-      expect(mediaController.deleteVideo).not.toHaveBeenCalled();
+      expect(mediaController.deleteVideoSequence).not.toHaveBeenCalled();
     });
 
     it("should refetch videos after deletion", async () => {
@@ -272,7 +272,7 @@ describe("DetectionExplorerStore", () => {
       };
 
       vi.mocked(mediaController.getVideoSequence).mockResolvedValue(mockSequenceResponse);
-      vi.mocked(mediaController.deleteVideo).mockResolvedValue(new Blob());
+      vi.mocked(mediaController.deleteVideoSequence).mockResolvedValue(new Blob());
 
       const mockListResponse = {
         content: [],

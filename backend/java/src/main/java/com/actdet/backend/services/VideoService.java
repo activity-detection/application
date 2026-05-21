@@ -8,6 +8,7 @@ import com.actdet.backend.services.dtos.VideoDTO;
 import com.actdet.backend.services.dtos.VideoSequenceDTO;
 import com.actdet.backend.services.exceptions.RecordNotFoundException;
 import com.actdet.backend.services.exceptions.RecordSavingException;
+import com.actdet.backend.services.exceptions.ReferencedVideoException;
 import com.actdet.backend.services.exceptions.VideoNotFoundException;
 import jakarta.transaction.Transactional;
 import org.jcodec.codecs.h264.mp4.AvcCBox;
@@ -128,8 +129,77 @@ public class VideoService {
     }
 
     @Transactional
+    protected void fixVideoReferencesAndDeleteItFromDatabase(Video videoToDelete) {
+        var videosInSequence = videoRepository.findVideoSequenceByOriginId(videoToDelete.getOriginId());
+
+        Optional<Video> videoBefore = Optional.empty();
+        Video videoForDeletion = null;
+        Optional<Video> videoAfter = Optional.empty();
+
+
+        for (int i = 0; i < videosInSequence.size(); i++) {
+            Video checkedVideo = videosInSequence.get(i);
+            if (checkedVideo.getId().equals(videoToDelete.getId())) {
+                videoForDeletion = checkedVideo;
+                videosInSequence.remove(i);
+                i--;
+                if (videoForDeletion.getReferencedVideoId() != null && videoForDeletion.getId().equals(videoForDeletion.getOriginId()))
+                    throw new ReferencedVideoException("Video references in sequence are corrupted. First video in sequence cannot be a continuation.");
+            } else if (videoToDelete.getId().equals(checkedVideo.getReferencedVideoId())) {
+                videoAfter = Optional.of(checkedVideo);
+            }
+
+            if (videoForDeletion != null && videoAfter.isPresent()) break;
+        }
+        if (videoForDeletion == null)
+            throw new VideoNotFoundException("Could not find video for deletion in its sequence!");
+        for (Video checkedVideo : videosInSequence) {
+            if (checkedVideo.getId().equals(videoForDeletion.getReferencedVideoId()))
+                videoBefore = Optional.of(checkedVideo);
+        }
+
+        //Jezeli usuniete video jest jedynym lub ostatnim w sekwencji to nie wymaga poprawek referencji
+        //Jezeli usuniete video bylo pierwsze w sekwencji
+        if (videoBefore.isEmpty() && videoAfter.isPresent()) {
+            UUID newOriginId = videoAfter.get().getId();
+            videosInSequence.forEach(video -> video.setOriginId(newOriginId));
+            videoAfter.get().setReferencedVideoId(null);
+            videoRepository.saveAllAndFlush(videosInSequence);
+        }else
+        //Jezeli usuniete video bylo w srodku sekwencji
+        if (videoBefore.isPresent() && videoAfter.isPresent()) {
+            Video fixedVideoAfter = videoAfter.get();
+            fixedVideoAfter.setReferencedVideoId(videoBefore.get().getId());
+            videoRepository.saveAndFlush(fixedVideoAfter);
+        }
+
+        videoRepository.delete(videoToDelete);
+    }
+
+
+    //Mozna ewentualnie dodac zeby jakos oznaczac ze video zostalo usuniete z sekwencji
+    @Transactional
     public void deleteVideoDatabaseRecord(String videoPath) {
-        videoRepository.deleteVideoByPathToFile(videoPath);
+        Video deletedVideo = videoRepository.findByPathToFile(videoPath)
+                .orElseThrow(() -> new RecordNotFoundException("Specified record does not exist"));
+
+        fixVideoReferencesAndDeleteItFromDatabase(deletedVideo);
+    }
+
+    @Transactional
+    public void deleteVideoSequenceFromDatabse(String originId){
+        List<Video> deletedVideoSequence = videoRepository.findVideoSequenceByOriginId(UUID.fromString(originId));
+        if(deletedVideoSequence.isEmpty()) throw new RecordNotFoundException("Video sequence with specified origin_id does not exist");
+
+        for(Video v: deletedVideoSequence){
+            Path deletedVideoPath = videoFolderPath.resolve(Paths.get(v.getPathToFile()));
+            try {
+                Files.delete(deletedVideoPath);
+
+            } catch (IOException e) {
+                throw new VideoNotFoundException("Specified video does not exist");
+            }
+        }
     }
 
     @Transactional
@@ -139,6 +209,7 @@ public class VideoService {
         Path deletedVideoPath = videoFolderPath.resolve(Paths.get(deletedVideo.getPathToFile()));
         try {
             Files.delete(deletedVideoPath);
+
         } catch (IOException e) {
             throw new VideoNotFoundException("Specified video does not exist");
         }
@@ -155,7 +226,7 @@ public class VideoService {
         try (Stream<String> stream = videoRepository.streamAllVideoPaths()) {
             stream.forEach(path -> {
                 if (!Files.isRegularFile(this.videoFolderPath.resolve(path))) {
-                    videoRepository.deleteVideoByPathToFile(path);
+                    deleteVideoDatabaseRecord(path);
                     deletedRecordsCount.getAndIncrement();
                 }
             });
@@ -173,11 +244,6 @@ public class VideoService {
         return new PageImpl<>(page.get().map(VideoDTO::new).toList(), pageable, page.getTotalElements());
     }
 
-    // VideoSequences to "paczki" video zawierajace informacje:
-    // - Id początkowego video
-    // - lista video nastepujacych po sobie w poprawnej kolejnosci, z wymienionymi ich id oraz detailami
-
-    //TO JEST NIESKONCZONE
 
     public Page<VideoSequenceDTO> getVideoSequences(final Pageable pageable, LocalDateTime from, LocalDateTime to) {
         final Page<UUID> page = videoRepository.findVideoSequencesOriginIds(pageable, from, to);
@@ -185,7 +251,8 @@ public class VideoService {
         if (originIds.isEmpty()) return new PageImpl<>(Collections.emptyList(), pageable, 0);
 
         List<Video> allVideos = videoRepository.findAllVideoSequencesByOriginIds(originIds, pageable.getSort());
-
+        if (!originIds.isEmpty() && allVideos.isEmpty())
+            throw new ReferencedVideoException("Video origin_id references are corrupt and does not equal any existing video_id");
         Map<UUID, List<Video>> videoSequenceMap = allVideos.stream().collect(Collectors.groupingBy(Video::getOriginId));
         List<VideoSequenceDTO> videoSequencesList = originIds.stream().map(uuid -> {
             List<Video> videoList = videoSequenceMap.get(uuid);
@@ -492,7 +559,7 @@ public class VideoService {
         if (pathToFile == null) {
             return Optional.empty();
         }
-        return this.videoRepository.findByPathToFile(pathToFile.toString());
+        return this.videoRepository.findVideoIdByPathToFile(pathToFile.toString());
     }
 
 
@@ -527,7 +594,7 @@ public class VideoService {
         VideoDetails.Details sequenceDetails = new VideoDetails.Details();
         Duration sequenceDuration = Duration.ZERO;
 
-        for(VideoDetails.Details details : orderedDetails){
+        for (VideoDetails.Details details : orderedDetails) {
             Duration sd = sequenceDuration;
             details.getDetectedObjects().forEach(objectDetections -> {
                 VideoDetails.Details.DetectionTimestamp dt = objectDetections.getDetectionTimestamp();
