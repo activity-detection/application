@@ -22,10 +22,6 @@ services:
         source: examples
         target: /app/examples
         read_only: true
-      - type: bind
-        source: examples
-        target: /app/examples
-        read_only: true
     deploy:
       resources:
         reservations:

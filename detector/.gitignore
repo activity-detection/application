@@ -46,3 +46,8 @@ vectors/
 **/*.mp4
 **/*.jpg
 **/*.txt
+
+# Scenes
+scenes/*
+!scenes/.gitkeep
+logs/
