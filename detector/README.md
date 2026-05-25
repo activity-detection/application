@@ -1,4 +1,4 @@
-## Detector
+# Detector
 
 An application for detecting objects and actions in video streams. It uses YOLO models (detection + pose) and LSTM for activity classification.
 
@@ -46,6 +46,7 @@ The configuration is loaded from the `.env` file. Key settings:
 - `SAVE_CLIPS` - `True|False` - save clips locally.
 - `UPLOAD_CLIPS` - `True|False` - upload clips to `BACKEND_UPLOAD_URL`.
 - `BACKEND_UPLOAD_URL` - the backend endpoint URL for uploading clips.
+- `SCENE_CONFIG_PATH` - optional path to a scene config JSON (e.g., `scenes/parking_west.json`). Empty disables scene detection.
 - `CAMERA_USER`, `CAMERA_PASSWORD`, `CAMERA_IP`, `CAMERA_PORT`, `RTSP_PATH` - RTSP parameters (used when `APP_MODE=RTSP`).
 - `BATCH_SIZE` - batch size of processed frames (default 8).
 
@@ -64,6 +65,12 @@ Many of the above variables have sample values in `compose.yaml`.
 - If `SAVE_CLIPS=True`, clips with detections will be saved to `CLIP_FOLDER`.
 - If `UPLOAD_CLIPS=True`, saved clips will be uploaded to `BACKEND_UPLOAD_URL`.
 
+## Scene-based detection (forbidden zone)
+
+```
+uv run python -m src.tools.scene_annotator --source data/test.mp4 --name parking_west
+```
+LMB klika wierzchołki, `ENTER` zamyka wielokąt, `S` zapisuje `scenes/<name>.json`, `Q` wyjście. Wskaż plik w `.env` przez `SCENE_CONFIG_PATH=scenes/parking_west.json` i uruchom `uv run python main.py` — reguła `zone_intrusion` z `vectors/example.csv` zacznie generować klipy gdy ktoś wejdzie w zaznaczony obszar.
 
 ## Repository structure
 - `main.py` - application entry point.

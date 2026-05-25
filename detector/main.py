@@ -34,7 +34,7 @@ def main():
     source = get_source()
     if Config.APP_MODE in TEMPORAL_MODES:
         source = FPSResampledSource(source, TARGET_FPS)
-    Config.FRAME_RATE = int(source.get_frame_rate())
+    Config.FRAME_RATE = source.get_frame_rate()
     detector = Detector()
     recorder = Recorder(2, 2, 6)
     recorder.load_action_classes(Config.ACTION_VECTORS_PATH)
