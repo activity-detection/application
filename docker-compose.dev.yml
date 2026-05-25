@@ -43,6 +43,9 @@ services:
       - backend
     environment:
       - NEXT_PUBLIC_API_BASE_URL=http://localhost/api
+      # WSL2/Docker bind mounts don't deliver inotify events; poll so Next HMR sees edits
+      - WATCHPACK_POLLING=true
+      - CHOKIDAR_USEPOLLING=true
     networks:
       - frontend-net
     ports:

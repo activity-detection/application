@@ -275,9 +275,15 @@ export function VideoPlayer({
     };
   }, [uploadDate, videoDescription, videoId, videoName]);
 
+  // Create the shaka player once for this component's lifetime and destroy it only on
+  // unmount. Previously this ran on every videoId change, which tore down and recreated
+  // the player while reusing the same <video> element; the un-awaited destroy() of a
+  // loaded player raced the new attach()/load(), detaching the element on every other
+  // switch (blank-on-alternate-click). Switching videos is handled by the load effect
+  // below via unload()->load(), so the player must persist across videoId changes.
   useEffect(() => {
     const videoElement = videoRef.current;
-    if (!videoElement || playerRef.current || !videoId) {
+    if (!videoElement || playerRef.current) {
       return;
     }
 
@@ -310,7 +316,7 @@ export function VideoPlayer({
       playerRef.current = null;
       void player.destroy();
     };
-  }, [videoId]);
+  }, []);
 
   useEffect(() => {
     const player = playerRef.current;
