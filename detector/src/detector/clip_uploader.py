@@ -233,7 +233,7 @@ class ClipUploader:
         buffer = io.BytesIO()
         
         container = av.open(buffer, mode='w', format='mp4')
-        stream = container.add_stream('libx264', rate=Config.FRAME_RATE)
+        stream = container.add_stream('libx264', rate=int(Config.FRAME_RATE))
         
         first_frame = clip[0]['frame']
         height, width, _ = first_frame.shape
