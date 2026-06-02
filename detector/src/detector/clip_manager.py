@@ -35,14 +35,25 @@ class ClipManager:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{action_name}_{timestamp}.mp4"
         path = self.clip_folder / filename
+
+        dependency = None
+        if Config.UPLOAD_CLIPS:
+            # Logger przed wywołaniem, żeby zobaczyć co wchodzi do funkcji:
+            logger.info(f"BEFORE DEP CHECK - Action: {action_name}, Counts (start/end): {inactive_counts}, Gap: {Config.SEQUENCE_FRAMES_GAP}, History: {self.prev_entries}")
+            
+            dependency = self._get_dependency(action_name, filename, inactive_counts)
+            
+            logger.info(f"AFTER DEP CHECK - DEPENDENCY RESULT: {dependency}")
+
+        # Dopiero teraz wątek może zająć się długotrwałym kodowaniem wideo
         if Config.SAVE_CLIPS:
             self.clip_saver.save(clip, path)
+            
         if Config.UPLOAD_CLIPS:
-            dependency = self._get_dependency(action_name, filename, inactive_counts)
-    
             reference_detections = [detection for detection, count in reference_counter.items() if count > 0]
             details = self.timestamper.timestamp(clip, action_name, (event_span[0], event_span[1]), reference_detections)
     
+            # Przekazujemy bezpiecznie wyliczoną wcześniej zależność
             self.clip_uploader.start_upload(clip, filename, details, dependency)
 
     def _get_dependency(self, action_name: str, filename: str, counts: tuple[int, int]) -> str | None:

@@ -52,6 +52,10 @@ class ClipUploader:
         self.clip_folder = Path(Config.CLIP_FOLDER or "clips")
         self.upload_queue: deque[UploadTask] = deque()
         self.upload_lock = threading.Lock()
+
+        # Słownik pamiętający wszystkie zadania (nawet te wysłane)
+        self.task_history: dict[str, UploadTask] = {}
+
         # TODO dodać obrabianie odłożonych nagrań
         self.davy_jones_locker: deque[UploadTask] = deque()
         self.davy_jones_lock = threading.Lock()
@@ -117,21 +121,27 @@ class ClipUploader:
             Also stash the dependency if needed"""
         dependency = task.dependency
 
-        if dependency is not None:
-            if dependency.state == RecState.STASHED:
-                    task.stashed_dependency = dependency
-                    task.dependency = None
-                    return True
-            elif dependency.state == RecState.SENT and dependency.id is not None:
-                return True
-        return True
+        if dependency is None:
+            return True
+
+        # Jeśli zależność trafiła do stasha, odpinamy ją i pozwalamy na wysyłkę bez id
+        if dependency.state == RecState.STASHED:
+            task.stashed_dependency = dependency
+            task.dependency = None
+            return True
+
+        # Zwracamy True tylko wtedy, kiedy poprzednik dostał już ID z backendu
+        if dependency.state == RecState.SENT and dependency.id is not None:
+            return True
+
+        return False
 
     def _process_upload_task(self, task: UploadTask):
         """Process a single upload task"""
         try:
             # Get the previous recording ID if dependency is satisfied
             prev_id = None
-            if task.dependency is not None and self._is_dependency_satisfied(task):
+            if task.dependency is not None:
                 prev_id = task.dependency.id
 
             # Mark as uploading
@@ -161,6 +171,7 @@ class ClipUploader:
                         self.upload_queue.remove(task)
                 
                 with self.davy_jones_lock:
+                    task.state = RecState.STASHED
                     self.davy_jones_locker.append(task)
 
             task.next_try_at = time.time() + UPLOAD_WAIT
@@ -173,23 +184,30 @@ class ClipUploader:
             details: FullStampModel,
             dependency_filename: str | None,
     ) -> None:
-        dependency = None
-        if dependency_filename is not None:
-            with self.upload_lock:
-                for task in self.upload_queue:
-                    if task.filename == dependency_filename:
-                        dependency = task
-                        break
         
-        task = UploadTask(
-            clip=clip,
-            filename=filename,
-            details=details,
-            state=RecState.AWAIT_UPLOAD,
-            dependency=dependency
-        )
+        dependency = None
+
         with self.upload_lock:
+            if dependency_filename is not None:
+                # Szukamy bezpośrednio w rejestrze historii po nazwie pliku
+                dependency = self.task_history.get(dependency_filename)
+        
+            task = UploadTask(
+                clip=clip,
+                filename=filename,
+                details=details,
+                state=RecState.AWAIT_UPLOAD,
+                dependency=dependency
+            )
+        
+            # Dodajemy zadanie do aktywnej kolejki i do rejestru historycznego
             self.upload_queue.append(task)
+            self.task_history[filename] = task
+            
+            # Zabezpieczenie przed nieskończonym rozrostem słownika
+            if len(self.task_history) > 100:
+                oldest_key = next(iter(self.task_history))
+                del self.task_history[oldest_key]
 
     def _upload_clip(
             self,
