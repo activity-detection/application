@@ -32,10 +32,10 @@ import type {
   UploadVideoParams,
   VideoSequence,
   VideoSequencePage,
-} from "@/types/api";
+} from "../../../types/api";
 
-import { orvalAxiosInstance } from "@/lib/orval-axios";
-import type { ErrorType, BodyType } from "@/lib/orval-axios";
+import { orvalAxiosInstance } from "../../../lib/orval-axios";
+import type { ErrorType, BodyType } from "../../../lib/orval-axios";
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
@@ -564,7 +564,7 @@ export const deleteVideo = (
   signal?: AbortSignal,
 ) => {
   return orvalAxiosInstance<Blob>(
-    { url: `/videos/sequences/${fileIdentifier}`, method: "DELETE", responseType: "blob", signal },
+    { url: `/videos/${fileIdentifier}`, method: "DELETE", responseType: "blob", signal },
     options,
   );
 };

@@ -5,8 +5,11 @@
  * OpenAPI spec version: v0
  */
 
+export * from "./action-class-thresholds";
+export * from "./action-class";
 export * from "./add-detection-template200";
 export * from "./create-detection-template-request";
+export * from "./crowd";
 export * from "./delete-detection-template-params";
 export * from "./delete-detection-template200";
 export * from "./delete-video-sequence200";
@@ -14,9 +17,12 @@ export * from "./delete-video200";
 export * from "./detection-rule-dt-o";
 export * from "./detection-timestamp";
 export * from "./detection-vector-dt-o";
+export * from "./detector-config-dt-o";
 export * from "./edit-detection-template-request";
 export * from "./edit-detection-template200";
 export * from "./event-detection";
+export * from "./forbidden-zone-dt-o";
+export * from "./forbidden-zone-request";
 export * from "./get-detected-elements200";
 export * from "./get-detection-templates-params";
 export * from "./get-detection-templates200";
@@ -39,3 +45,4 @@ export * from "./video-sequence-page-page";
 export * from "./video-sequence-page";
 export * from "./video-sequence-part";
 export * from "./video-sequence";
+export * from "./zone";

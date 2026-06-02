@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     BACKEND_UPLOAD_URL: str = ""
     SEQUENCE_FRAMES_GAP: int = 15 # TODO może to gdzieś przeniść
 
+    # Live config sync: when enabled, the detector polls the backend for its
+    # rules + forbidden zones and reloads them without a restart. The local
+    # ACTION_VECTORS_PATH / SCENE_CONFIG_PATH remain the offline fallback.
+    BACKEND_CONFIG_URL: str = ""
+    CONFIG_POLL_INTERVAL_S: float = 10.0
+    CONFIG_POLL_ENABLED: bool = False
+
     SOURCE_PATH: str
     ACTION_VECTORS_PATH: str
     BASE_MODEL_PATH: str

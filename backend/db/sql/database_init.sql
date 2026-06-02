@@ -76,3 +76,20 @@ CREATE TABLE detection_rule (
         (count IS NULL AND (count_from IS NOT NULL OR count_to IS NOT NULL))
         )
 );
+
+-- Forbidden areas: polygons drawn over a video frame in the UI, stored as
+-- normalized [0..1] coordinates so they are resolution-independent and can be
+-- scaled to the detector's live frame size. The detector polls these and
+-- auto-records when a person enters one (synthetic "forbidden_zone" rule).
+CREATE TABLE forbidden_zones (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    policy VARCHAR(20) NOT NULL DEFAULT 'forbidden',
+    points JSONB NOT NULL,                 -- [[x,y],...] normalized 0..1, >= 3 points
+    reference_video_id UUID,               -- the video the polygon was drawn over (optional)
+    aspect_ratio REAL,                     -- w/h of the reference frame (UI sanity check)
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_zone_refvideo FOREIGN KEY (reference_video_id)
+        REFERENCES videos(video_id) ON DELETE SET NULL
+);

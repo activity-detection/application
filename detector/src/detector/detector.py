@@ -11,7 +11,7 @@ from typing import cast
 from src.detector.config import Config, BASE_YOLO_MAPPING, LSTM_MAPPING, WINDOW_SIZE
 from src.detector.action import ActionVector
 from src.detector.lstm import MultiClassLSTM
-from src.detector.scene import SceneAnalyzer, load_scene
+from src.detector.scene import SceneAnalyzer, SceneConfig, load_scene
 from src.detector import logger
 
 
@@ -51,6 +51,17 @@ class Detector:
         if scene_cfg is not None:
             self.scene = SceneAnalyzer(scene_cfg, self.fps)
             logger.info(f"Scene detection enabled: {Config.SCENE_CONFIG_PATH}")
+
+    def set_scene(self, scene_cfg: SceneConfig | None) -> None:
+        """Swap the active scene analyzer. Safe to call any time: the analyzer is
+        stateless per frame, but polygons are pre-compiled in its constructor, so
+        a new config requires a fresh SceneAnalyzer rather than mutating the old."""
+        if scene_cfg is None:
+            self.scene = None
+            logger.info("Scene detection disabled")
+        else:
+            self.scene = SceneAnalyzer(scene_cfg, self.fps)
+            logger.info("Scene detection updated: %d zones", len(scene_cfg.zones))
 
     def process_batch(self, frames: list[np.ndarray]) -> list[ActionVector]:
         vectors_base = self.detect_objects(frames)

@@ -64,4 +64,22 @@ export default defineConfig({
       clean: false,
     },
   },
+  forbiddenZonesApi: {
+    input: {
+      ...sharedInput,
+      filters: {
+        mode: "include",
+        tags: ["forbidden-zones-controller"],
+      },
+    },
+    output: {
+      ...sharedOutput,
+      mode: "split",
+      target: "./src/features/forbidden-zones/api",
+      // clean must stay false: this config runs last and `schemas` points at the
+      // shared ./src/types/api folder, so cleaning would wipe the media/rules
+      // schema types the earlier configs generated.
+      clean: false,
+    },
+  },
 });
