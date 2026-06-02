@@ -76,6 +76,7 @@ services:
       - CLIP_FOLDER=/clips
       - BACKEND_UPLOAD_URL=http://backend:8080/videos/upload
       - ACTION_VECTORS_PATH=/app/vectors/vectors2.csv
+      - BACKEND_CONFIG_URL=http://backend:8080/detector/config
       - UPLOAD_CLIPS=True
       - SAVE_CLIPS=False
     volumes:
