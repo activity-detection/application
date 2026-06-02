@@ -203,6 +203,50 @@ function clampPercent(value: number): number {
   return Math.min(100, Math.max(0, value));
 }
 
+// "jumping_jacks" -> "Jumping Jacks". Action labels arrive as snake_case vocab keys;
+// the detail panels show them title-cased so they read as plain language.
+function prettyLabel(label?: string): string {
+  if (!label) {
+    return "Action";
+  }
+  return label.replace(/[_-]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+// Human-readable "0:03 – 0:05 · 2s" from an ISO-8601 [from, to] span, or "0:03" when there
+// is no distinct end. Returns null when there is no usable start time.
+function formatEventTime(
+  fromIso?: string,
+  toIso?: string,
+): { from: number; range: string; duration: string | null } | null {
+  const from = parseIsoDurationToSeconds(fromIso);
+  if (from == null) {
+    return null;
+  }
+  const to = parseIsoDurationToSeconds(toIso);
+  if (to != null && to > from) {
+    const seconds = Math.round(to - from);
+    return {
+      from,
+      range: `${formatSecondsAsClock(from)} – ${formatSecondsAsClock(to)}`,
+      duration: seconds > 0 ? `${seconds}s` : null,
+    };
+  }
+  return { from, range: formatSecondsAsClock(from), duration: null };
+}
+
+function JumpIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className="h-3.5 w-3.5"
+      fill="currentColor"
+    >
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  );
+}
+
 /**
  * Renders one marker per detected action onto the Shaka seek bar. Each event becomes a
  * clickable band covering its [from, to] range (with a solid accent on its left edge marking
@@ -619,26 +663,43 @@ export function VideoPlayer({
               {detailsLoading ? (
                 <p className="text-muted-foreground">Loading details...</p>
               ) : events.length ? (
-                <div className="space-y-2">
-                  {events.map((event, index) => (
-                    <div
-                      key={`event-${event.label ?? "event"}-${event.timestamp?.from ?? ""}-${index}`}
-                      className="border-border/50 bg-muted/30 rounded-md border p-3"
-                    >
-                      <div className="text-foreground flex items-center gap-2 text-xs">
+                <div className="space-y-1.5">
+                  {events.map((event, index) => {
+                    const time = formatEventTime(event.timestamp?.from, event.timestamp?.to);
+                    const color = getActionColor(event.label);
+                    return (
+                      <button
+                        key={`event-${event.label ?? "event"}-${event.timestamp?.from ?? ""}-${index}`}
+                        type="button"
+                        disabled={!time}
+                        onClick={() => time && handleSeek(time.from)}
+                        className="group border-border/50 bg-muted/30 hover:border-border hover:bg-muted/60 focus-visible:ring-ring flex w-full items-center gap-3 rounded-lg border p-2.5 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:cursor-default disabled:opacity-60"
+                      >
                         <span
                           aria-hidden
-                          className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: getActionColor(event.label) }}
+                          className="h-9 w-1 shrink-0 rounded-full"
+                          style={{ backgroundColor: color }}
                         />
-                        Label: {event.label ?? "—"}
-                      </div>
-                      <div className="text-muted-foreground text-xs">
-                        Timestamp: {event.timestamp?.from ?? "—"} {"->"}{" "}
-                        {event.timestamp?.to ?? "—"}
-                      </div>
-                    </div>
-                  ))}
+                        <span className="min-w-0 flex-1">
+                          <span className="text-foreground block truncate text-sm font-medium">
+                            {prettyLabel(event.label)}
+                          </span>
+                          <span className="text-muted-foreground text-xs tabular-nums">
+                            {time ? time.range : "—"}
+                            {time?.duration ? (
+                              <span className="text-muted-foreground/70"> · {time.duration}</span>
+                            ) : null}
+                          </span>
+                        </span>
+                        {time ? (
+                          <span className="text-muted-foreground group-hover:text-foreground inline-flex shrink-0 items-center gap-1 text-xs font-medium transition-colors">
+                            <JumpIcon />
+                            Jump
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-muted-foreground">No events</p>
@@ -654,24 +715,57 @@ export function VideoPlayer({
               {detailsLoading ? (
                 <p className="text-muted-foreground">Loading details...</p>
               ) : detections.length ? (
-                <div className="space-y-2">
-                  {detections.map((detection, index) => (
-                    <div
-                      key={`detection-${detection.timestamp?.from ?? ""}-${index}`}
-                      className="border-border/50 bg-muted/30 rounded-md border p-3"
-                    >
-                      <div className="text-muted-foreground text-xs">
-                        Timestamp: {detection.timestamp?.from ?? "—"} {"->"}{" "}
-                        {detection.timestamp?.to ?? "—"}
-                      </div>
-                      <div className="text-foreground mt-1 text-xs wrap-break-word">
-                        Objects:{" "}
-                        {detection.objects
-                          ?.map((object) => `${object.name ?? "Object"} (${object.count ?? 1})`)
-                          .join(", ") || "—"}
-                      </div>
-                    </div>
-                  ))}
+                <div className="space-y-1.5">
+                  {detections.map((detection, index) => {
+                    const time = formatEventTime(
+                      detection.timestamp?.from,
+                      detection.timestamp?.to,
+                    );
+                    const objects = detection.objects ?? [];
+                    return (
+                      <button
+                        key={`detection-${detection.timestamp?.from ?? ""}-${index}`}
+                        type="button"
+                        disabled={!time}
+                        onClick={() => time && handleSeek(time.from)}
+                        className="group border-border/50 bg-muted/30 hover:border-border hover:bg-muted/60 focus-visible:ring-ring flex w-full items-start gap-3 rounded-lg border p-2.5 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:cursor-default disabled:opacity-60"
+                      >
+                        <span className="min-w-0 flex-1">
+                          <span className="text-muted-foreground text-xs font-medium tabular-nums">
+                            {time ? time.range : "—"}
+                            {time?.duration ? (
+                              <span className="text-muted-foreground/70"> · {time.duration}</span>
+                            ) : null}
+                          </span>
+                          {objects.length ? (
+                            <span className="mt-1.5 flex flex-wrap gap-1">
+                              {objects.map((object, objectIndex) => (
+                                <span
+                                  key={`obj-${object.name ?? "object"}-${objectIndex}`}
+                                  className="bg-background text-foreground border-border/60 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
+                                >
+                                  {object.name ?? "Object"}
+                                  <span className="text-muted-foreground tabular-nums">
+                                    ×{object.count ?? 1}
+                                  </span>
+                                </span>
+                              ))}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground mt-1 block text-xs">
+                              No objects
+                            </span>
+                          )}
+                        </span>
+                        {time ? (
+                          <span className="text-muted-foreground group-hover:text-foreground inline-flex shrink-0 items-center gap-1 text-xs font-medium transition-colors">
+                            <JumpIcon />
+                            Jump
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-muted-foreground">No detections</p>
