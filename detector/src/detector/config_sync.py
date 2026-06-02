@@ -136,14 +136,11 @@ class ConfigPoller:
         etag = resp.headers.get("ETag")
         remote = self._parse(resp.json())
 
+        # The backend is authoritative: an empty payload means "no rules", so we
+        # push the empty config through and the recorder ends up with 0 action
+        # classes (detects nothing) rather than silently keeping stale rules.
         if remote.is_empty():
-            # Treat an empty payload as a no-op so a momentarily empty/misconfigured
-            # backend never wipes the active rules. Record the etag so we don't
-            # re-fetch the same empty body every tick.
-            logger.warning("Backend returned an empty detector config; keeping last-good config")
-            with self._lock:
-                self._last_etag = etag
-            return
+            logger.info("Backend returned an empty detector config; clearing active rules")
 
         with self._lock:
             self._pending_actions = remote.action_classes

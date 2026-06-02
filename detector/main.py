@@ -64,12 +64,19 @@ def main():
     Config.FRAME_RATE = source.get_frame_rate()
     detector = Detector()
     recorder = Recorder(2, 2, 6)
-    recorder.load_action_classes(Config.ACTION_VECTORS_PATH)  # offline fallback
-    logger.info("Vectors:")
-    for ac in recorder.action_classes:
-        logger.info(ac.action_vector)
-
     poller = start_config_poller(source)
+
+    # When live config polling is the source of truth, the backend is
+    # authoritative: the CSV action vectors are ignored entirely (no offline
+    # fallback). Until the first successful poll lands, the recorder runs with an
+    # empty action set and detects nothing.
+    if poller is not None:
+        logger.info("Config polling enabled — ignoring CSV action vectors (%s)", Config.ACTION_VECTORS_PATH)
+    else:
+        recorder.load_action_classes(Config.ACTION_VECTORS_PATH)  # offline fallback
+        logger.info("Vectors:")
+        for ac in recorder.action_classes:
+            logger.info(ac.action_vector)
 
     batch: list[np.ndarray] = []
     fps = FPS_estimator()
