@@ -77,6 +77,26 @@ export function useDetectionTemplates(page: number, pageSize: number = 8) {
   });
 }
 
+function extractElementNames(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (typeof item === "string") {
+        return item;
+      }
+      if (
+        item &&
+        typeof item === "object" &&
+        "name" in item &&
+        typeof (item as DetectionElementItem).name === "string"
+      ) {
+        return (item as DetectionElementItem).name;
+      }
+      return null;
+    })
+    .filter((item): item is string => Boolean(item));
+}
+
 export function useDetectedElements() {
   return useQuery({
     queryKey: ELEMENTS_QUERY_KEY,
@@ -84,49 +104,23 @@ export function useDetectedElements() {
       const response = (await getDetectedElements()) as unknown;
       let nextElements: string[] = [];
 
+      // The orval mutator returns response.data directly, so a blob endpoint
+      // resolves to a bare Blob. Older paths returned an array or { data: Blob }.
+      const blob =
+        response instanceof Blob
+          ? response
+          : response &&
+              typeof response === "object" &&
+              "data" in response &&
+              (response as { data?: unknown }).data instanceof Blob
+            ? (response as { data: Blob }).data
+            : null;
+
       if (Array.isArray(response)) {
-        nextElements = response
-          .map((item) => {
-            if (typeof item === "string") {
-              return item;
-            }
-            if (
-              item &&
-              typeof item === "object" &&
-              "name" in item &&
-              typeof (item as DetectionElementItem).name === "string"
-            ) {
-              return (item as DetectionElementItem).name;
-            }
-            return null;
-          })
-          .filter((item): item is string => Boolean(item));
-      } else if (
-        response &&
-        typeof response === "object" &&
-        "data" in response &&
-        (response as { data?: unknown }).data instanceof Blob
-      ) {
-        const rawText = await (response as { data: Blob }).data.text();
-        const parsed = JSON.parse(rawText) as unknown;
-        if (Array.isArray(parsed)) {
-          nextElements = parsed
-            .map((item) => {
-              if (typeof item === "string") {
-                return item;
-              }
-              if (
-                item &&
-                typeof item === "object" &&
-                "name" in item &&
-                typeof (item as DetectionElementItem).name === "string"
-              ) {
-                return (item as DetectionElementItem).name;
-              }
-              return null;
-            })
-            .filter((item): item is string => Boolean(item));
-        }
+        nextElements = extractElementNames(response);
+      } else if (blob) {
+        const parsed = JSON.parse(await blob.text()) as unknown;
+        nextElements = extractElementNames(parsed);
       }
 
       return Array.from(new Set(nextElements));
