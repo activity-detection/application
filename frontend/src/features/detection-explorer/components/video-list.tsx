@@ -13,13 +13,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { VideoPlayer } from "@/features/detection-explorer/components/video-player";
 import { useDetectionExplorer } from "@/features/detection-explorer/hooks/use-detection-explorer";
 import SettingsWindow from "@/features/detection-rules/components/settings-window";
 import { cn } from "@/lib/utils";
 
 const DeleteVideosComponent = dynamic(
   () => import("./delete-videos-window").then((module) => module.DeleteVideosComponent),
+  {
+    ssr: false,
+    loading: () => null,
+  },
+);
+
+// Loaded client-only: the player pulls in Shaka's UI build, which touches `document` at
+// module-evaluation time and would otherwise crash server-side prerendering.
+const VideoPlayer = dynamic(
+  () => import("./video-player").then((module) => module.VideoPlayer),
   {
     ssr: false,
     loading: () => null,

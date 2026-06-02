@@ -19,7 +19,7 @@ prod:
 	docker-compose up
 
 dev:
-	docker-compose -f docker-compose.dev.yml up
+	docker compose -f docker-compose.dev.yml up
 
 test:
 	docker compose -f docker-compose.test.yml up --exit-code-from playwright --quiet-build 

@@ -71,6 +71,25 @@ class Recorder:
                 action_class = ActionClass(name, vector, self.config)
                 self.action_classes.append(action_class)
 
+    def can_swap_actions(self) -> bool:
+        """True only when no recording is in flight, so action classes can be
+        replaced without orphaning entries in the action stack or corrupting the
+        recording/buffer slicing invariants."""
+        return (
+            not self.action_stack
+            and not self.recording
+            and all(ac.state is State.IDLE for ac in self.action_classes)
+        )
+
+    def set_action_classes(self, specs: list[tuple[str, dict[str, int]]]):
+        """Replace the active action classes from (name, {element: count}) specs
+        fetched from the backend. Only call when can_swap_actions() is True.
+        Fresh ActionClass objects start IDLE (correct cold start)."""
+        self.action_classes = [
+            ActionClass(name, ActionVector(thresholds), self.config)
+            for name, thresholds in specs
+        ]
+
     def check_frame(self, frame: np.ndarray, reference_vector: ActionVector):
         command_list: list[Command] = []
         for action_class in self.action_classes:

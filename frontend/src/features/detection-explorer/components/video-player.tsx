@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import shaka from "shaka-player";
+import { createPortal } from "react-dom";
+// The UI build is a superset of the base player (it still exposes shaka.Player,
+// shaka.polyfill, etc.) and additionally provides shaka.ui.Overlay, which renders
+// the styleable seek bar we hang the per-action markers on.
+import shaka from "shaka-player/dist/shaka-player.ui";
+import "shaka-player/dist/controls.css";
 
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -12,6 +17,7 @@ import {
 import { getApiBaseUrl } from "@/lib/client";
 import { cn } from "@/lib/utils";
 import type { VideoSequence, VideoSequencePage, VideoSequencePart } from "@/types/api";
+import { formatSecondsAsClock, parseIsoDurationToSeconds } from "@/utils/duration";
 
 interface VideoPlayerProps {
   videoId: string | null;
@@ -169,6 +175,96 @@ async function resolveVideoSequence(videoId: string): Promise<VideoSequence | nu
   return null;
 }
 
+// Stable palette used to colour-code action markers. The same label always maps to the
+// same colour so a marker on the seek bar and its entry in the Events list line up visually.
+const ACTION_MARKER_COLORS = [
+  "#ef4444",
+  "#f59e0b",
+  "#10b981",
+  "#3b82f6",
+  "#a855f7",
+  "#ec4899",
+  "#14b8a6",
+  "#f97316",
+] as const;
+
+function getActionColor(label?: string): string {
+  if (!label) {
+    return ACTION_MARKER_COLORS[0];
+  }
+  let hash = 0;
+  for (let index = 0; index < label.length; index += 1) {
+    hash = (hash * 31 + label.charCodeAt(index)) >>> 0;
+  }
+  return ACTION_MARKER_COLORS[hash % ACTION_MARKER_COLORS.length];
+}
+
+function clampPercent(value: number): number {
+  return Math.min(100, Math.max(0, value));
+}
+
+/**
+ * Renders one marker per detected action onto the Shaka seek bar. Each event becomes a
+ * clickable band covering its [from, to] range (with a solid accent on its left edge marking
+ * the start); clicking it seeks the video to the action's start. Portaled into Shaka's
+ * `.shaka-seek-bar-container` so it tracks the bar's geometry; positions are percentages of
+ * the media duration.
+ */
+function ActionMarkers({
+  events,
+  duration,
+  onSeek,
+}: {
+  events: EventDetection[];
+  duration: number;
+  onSeek: (seconds: number) => void;
+}) {
+  if (!Number.isFinite(duration) || duration <= 0) {
+    return null;
+  }
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-10">
+      {events.map((event, index) => {
+        const from = parseIsoDurationToSeconds(event.timestamp?.from);
+        if (from == null) {
+          return null;
+        }
+
+        const to = parseIsoDurationToSeconds(event.timestamp?.to);
+        const startPercent = clampPercent((from / duration) * 100);
+        const endPercent = to != null ? clampPercent((to / duration) * 100) : startPercent;
+        const widthPercent = Math.max(endPercent - startPercent, 0);
+        const color = getActionColor(event.label);
+        const label = event.label ?? "Action";
+        const range =
+          to != null
+            ? `${formatSecondsAsClock(from)} – ${formatSecondsAsClock(to)}`
+            : formatSecondsAsClock(from);
+        const tooltip = `${label} (${range})`;
+
+        return (
+          <button
+            key={`marker-${label}-${event.timestamp?.from ?? ""}-${index}`}
+            type="button"
+            title={tooltip}
+            aria-label={`Jump to ${tooltip}`}
+            onClick={() => onSeek(from)}
+            className="pointer-events-auto absolute top-0 bottom-0 cursor-pointer rounded-sm border-l-2 opacity-65 transition-opacity hover:opacity-100"
+            style={{
+              left: `${startPercent}%`,
+              width: `${widthPercent}%`,
+              minWidth: "7px",
+              backgroundColor: color,
+              borderLeftColor: "rgba(0, 0, 0, 0.55)",
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 export function VideoPlayer({
   videoId,
   videoName,
@@ -185,9 +281,13 @@ export function VideoPlayer({
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [playerLoading, setPlayerLoading] = useState(false);
   const [playerReady, setPlayerReady] = useState(false);
+  const [mediaDuration, setMediaDuration] = useState<number | null>(null);
+  const [seekBarEl, setSeekBarEl] = useState<HTMLElement | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<shaka.Player | null>(null);
+  const uiRef = useRef<shaka.ui.Overlay | null>(null);
 
   useEffect(() => {
     shaka.polyfill.installAll();
@@ -275,15 +375,18 @@ export function VideoPlayer({
     };
   }, [uploadDate, videoDescription, videoId, videoName]);
 
-  // Create the shaka player once for this component's lifetime and destroy it only on
-  // unmount. Previously this ran on every videoId change, which tore down and recreated
-  // the player while reusing the same <video> element; the un-awaited destroy() of a
-  // loaded player raced the new attach()/load(), detaching the element on every other
-  // switch (blank-on-alternate-click). Switching videos is handled by the load effect
-  // below via unload()->load(), so the player must persist across videoId changes.
+  // Create the shaka player + UI overlay once for this component's lifetime and destroy it
+  // only on unmount. Previously this ran on every videoId change, which tore down and
+  // recreated the player while reusing the same <video> element; the un-awaited destroy()
+  // of a loaded player raced the new attach()/load(), detaching the element on every other
+  // switch (blank-on-alternate-click). Switching videos is handled by the load effect below
+  // via unload()->load(), so the player must persist across videoId changes. The UI overlay
+  // (rather than native <video controls>) gives us the styleable seek bar that the
+  // per-action markers are portaled onto.
   useEffect(() => {
     const videoElement = videoRef.current;
-    if (!videoElement || playerRef.current) {
+    const container = containerRef.current;
+    if (!videoElement || !container || playerRef.current) {
       return;
     }
 
@@ -295,12 +398,7 @@ export function VideoPlayer({
     const player = new shaka.Player();
     playerRef.current = player;
     let cancelled = false;
-
-    void player.attach(videoElement).then(() => {
-      if (!cancelled) {
-        setPlayerReady(true);
-      }
-    });
+    let ui: shaka.ui.Overlay | null = null;
 
     const onError = (event: Event) => {
       const detail = (event as CustomEvent<unknown>).detail;
@@ -309,14 +407,101 @@ export function VideoPlayer({
 
     player.addEventListener("error", onError);
 
+    // Attach first, then build the UI overlay around the already-attached player/video.
+    void player.attach(videoElement).then(() => {
+      if (cancelled) {
+        return;
+      }
+      ui = new shaka.ui.Overlay(player, container, videoElement);
+      ui.configure({
+        seekBarColors: {
+          base: "rgba(255, 255, 255, 0.3)",
+          buffered: "rgba(255, 255, 255, 0.54)",
+          played: "rgb(255, 255, 255)",
+        },
+      });
+      uiRef.current = ui;
+      setPlayerReady(true);
+    });
+
     return () => {
       cancelled = true;
       setPlayerReady(false);
       player.removeEventListener("error", onError);
       playerRef.current = null;
-      void player.destroy();
+      uiRef.current = null;
+      // ui.destroy() also destroys the player it owns; only destroy the bare player when
+      // the overlay was never created (attach() had not resolved yet).
+      if (ui) {
+        void ui.destroy();
+      } else {
+        void player.destroy();
+      }
     };
   }, []);
+
+  // Track the media duration from the underlying <video> element so marker positions can be
+  // expressed as a percentage of the timeline.
+  useEffect(() => {
+    const videoElement = videoRef.current;
+    if (!videoElement) {
+      return;
+    }
+
+    const updateDuration = () => {
+      setMediaDuration(Number.isFinite(videoElement.duration) ? videoElement.duration : null);
+    };
+
+    videoElement.addEventListener("loadedmetadata", updateDuration);
+    videoElement.addEventListener("durationchange", updateDuration);
+    updateDuration();
+
+    return () => {
+      videoElement.removeEventListener("loadedmetadata", updateDuration);
+      videoElement.removeEventListener("durationchange", updateDuration);
+    };
+  }, []);
+
+  // Locate Shaka's seek-bar container so the marker layer can be portaled into it. The
+  // container is created asynchronously by the overlay, so fall back to a MutationObserver
+  // until it appears.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !playerReady) {
+      return;
+    }
+
+    const findSeekBar = () =>
+      container.querySelector<HTMLElement>(".shaka-seek-bar-container");
+
+    const attach = (element: HTMLElement) => {
+      // Guarantee a positioning context for the absolutely-positioned marker layer.
+      if (getComputedStyle(element).position === "static") {
+        element.style.position = "relative";
+      }
+      setSeekBarEl(element);
+    };
+
+    const existing = findSeekBar();
+    if (existing) {
+      attach(existing);
+      return;
+    }
+
+    const observer = new MutationObserver(() => {
+      const element = findSeekBar();
+      if (element) {
+        attach(element);
+        observer.disconnect();
+      }
+    });
+    observer.observe(container, { childList: true, subtree: true });
+
+    return () => {
+      observer.disconnect();
+      setSeekBarEl(null);
+    };
+  }, [playerReady]);
 
   useEffect(() => {
     const player = playerRef.current;
@@ -351,6 +536,18 @@ export function VideoPlayer({
 
   const events = useMemo(() => videoDetails?.events ?? [], [videoDetails]);
   const detections = useMemo(() => videoDetails?.detections ?? [], [videoDetails]);
+
+  // Prefer the element's real duration; fall back to the duration reported in the details
+  // payload before metadata has loaded so markers can render immediately.
+  const markerDuration =
+    mediaDuration ?? parseIsoDurationToSeconds(videoDetails?.duration) ?? 0;
+
+  const handleSeek = (seconds: number) => {
+    const videoElement = videoRef.current;
+    if (videoElement && Number.isFinite(seconds)) {
+      videoElement.currentTime = seconds;
+    }
+  };
 
   if (!videoId) {
     return null;
@@ -387,20 +584,24 @@ export function VideoPlayer({
 
       <CardContent className="space-y-4 p-4">
         <div className="relative aspect-video overflow-hidden rounded-lg bg-black">
-          <video
-            ref={videoRef}
-            className="h-full w-full"
-            controls
-            playsInline
-            preload="auto"
-          />
+          {/* Shaka injects its UI (controls + seek bar) into this container as siblings of
+              the <video>; keep it free of other React-managed children so reconciliation
+              never fights the overlay. Loading/error overlays live outside it. */}
+          <div ref={containerRef} className="h-full w-full">
+            <video ref={videoRef} className="h-full w-full" playsInline preload="auto" />
+          </div>
+          {seekBarEl &&
+            createPortal(
+              <ActionMarkers events={events} duration={markerDuration} onSeek={handleSeek} />,
+              seekBarEl,
+            )}
           {(sequenceLoading || playerLoading) && (
-            <div className="text-muted-foreground absolute inset-0 flex items-center justify-center bg-black/60">
+            <div className="text-muted-foreground absolute inset-0 z-20 flex items-center justify-center bg-black/60">
               Loading video...
             </div>
           )}
           {sequenceError && (
-            <div className="text-muted-foreground absolute inset-0 flex items-center justify-center bg-black/60 px-4 text-center">
+            <div className="text-muted-foreground absolute inset-0 z-20 flex items-center justify-center bg-black/60 px-4 text-center">
               {sequenceError}
             </div>
           )}
@@ -424,7 +625,14 @@ export function VideoPlayer({
                       key={`event-${event.label ?? "event"}-${event.timestamp?.from ?? ""}-${index}`}
                       className="border-border/50 bg-muted/30 rounded-md border p-3"
                     >
-                      <div className="text-foreground text-xs">Label: {event.label ?? "—"}</div>
+                      <div className="text-foreground flex items-center gap-2 text-xs">
+                        <span
+                          aria-hidden
+                          className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: getActionColor(event.label) }}
+                        />
+                        Label: {event.label ?? "—"}
+                      </div>
                       <div className="text-muted-foreground text-xs">
                         Timestamp: {event.timestamp?.from ?? "—"} {"->"}{" "}
                         {event.timestamp?.to ?? "—"}

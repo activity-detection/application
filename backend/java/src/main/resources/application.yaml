@@ -12,10 +12,26 @@ activity-detector:
     folderPath: ${VIDEO_FOLDER_PATH:videos} #Sciezka wzieta ze zmiennej srodowiskowej lub jezeli jej nie ma domyslna wartosc videos
     subfolderDepth: 1 #Liczba poziomów subfolderów w katalogu z video. 0 oznacza brak subfolderow w katalogu.
 
+  # Catalog of elements the detector can report. Names must match the detector's
+  # internal vocabulary (BASE_YOLO + LSTM actions + scene keys); "human" is the
+  # UI-friendly word the detector aliases back to its internal "person" key.
   detected-elements:
     - human
+    - bicycle
+    - car
+    - bird
+    - cat
+    - dog
+    - handbag
+    - suitcase
     - knife
-    - backpack
+    - normal
+    - jumping_jacks
+    - squats
+    - falling
+    - running
+    - forbidden_zone
+    - crowd
 
 springdoc.api-docs.enabled: true
 springdoc.swagger-ui.enabled: false

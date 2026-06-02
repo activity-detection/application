@@ -28,7 +28,11 @@ import {
   useDeleteTemplate,
   type DetectionTemplateItem,
 } from "@/features/detection-rules/hooks/use-detection-rules";
+import { ForbiddenAreasPanel } from "@/features/forbidden-zones/components/forbidden-areas-panel";
+import { cn } from "@/lib/utils";
 import type { DetectionVectorDTO } from "@/types/api";
+
+type SettingsTab = "rules" | "areas";
 
 function createEmptyRule(defaultElementName = ""): RuleFormData {
   return {
@@ -90,6 +94,7 @@ interface SettingsWindowProps {
 }
 
 export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
+  const [activeTab, setActiveTab] = useState<SettingsTab>("rules");
   const [pageNumber, setPageNumber] = useState(0);
   const pageSize = 8;
 
@@ -259,27 +264,57 @@ export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
       >
         <Card className="border-border/50 flex max-h-[85vh] w-full max-w-4xl flex-col shadow-lg">
           <div className="flex items-center justify-between px-6 pt-4 pb-2">
-            <h2 className="text-foreground text-xl font-semibold">Detection Rules Settings</h2>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleCreate}
-                className="bg-primary text-primary-foreground hover:bg-primary/80 inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-sm transition-colors"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+            <div className="flex items-center gap-4">
+              <h2 className="text-foreground text-xl font-semibold">Settings</h2>
+              <div className="bg-muted/40 inline-flex rounded-lg p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("rules")}
+                  className={cn(
+                    "cursor-pointer rounded-md px-3 py-1.5 text-sm transition-colors",
+                    activeTab === "rules"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
                 >
-                  <path d="M12 5v14m-7-7h14" />
-                </svg>
-                New Template
-              </button>
+                  Detection Rules
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("areas")}
+                  className={cn(
+                    "cursor-pointer rounded-md px-3 py-1.5 text-sm transition-colors",
+                    activeTab === "areas"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  Forbidden Areas
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              {activeTab === "rules" && (
+                <button
+                  type="button"
+                  onClick={handleCreate}
+                  className="bg-primary text-primary-foreground hover:bg-primary/80 inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-sm transition-colors"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M12 5v14m-7-7h14" />
+                  </svg>
+                  New Template
+                </button>
+              )}
               <button
                 type="button"
                 onClick={onClose}
@@ -302,6 +337,10 @@ export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
           </div>
 
           <CardContent className="overflow-y-auto px-6 pb-4">
+            {activeTab === "areas" ? (
+              <ForbiddenAreasPanel />
+            ) : (
+              <>
             {error ? (
               <div className="mb-3 rounded-lg border border-red-900/40 bg-red-900/20 px-3 py-2 text-sm text-red-200">
                 {error}
@@ -505,6 +544,8 @@ export default function SettingsWindow({ open, onClose }: SettingsWindowProps) {
                 </button>
               </nav>
             </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

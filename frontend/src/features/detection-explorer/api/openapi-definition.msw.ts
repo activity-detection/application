@@ -9,7 +9,7 @@ import { faker } from "@faker-js/faker";
 import { HttpResponse, http } from "msw";
 import type { RequestHandlerOptions } from "msw";
 
-import type { UploadVideo200, VideoSequence, VideoSequencePage } from "@/types/api";
+import type { UploadVideo200, VideoSequence, VideoSequencePage } from "../../../types/api";
 
 export const getUploadVideoResponseMock = (): UploadVideo200 => ({});
 
