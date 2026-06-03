@@ -106,6 +106,7 @@ class Recorder:
                         logger.error(f'An ActionClass outside of Recorder stack was not IDLE. Stopping.')
                         action_class.end()
                 else:
+                    self._set_action_end(recorder_action)
                     self._process_clip(recorder_action)
                     self._remove(index)
 
@@ -116,7 +117,10 @@ class Recorder:
 
     def _add(self, action_class: ActionClass):
         if not self.recording:
-            self.recording.extend(self.buffer)
+            buffer_len = min(self.buffer_frames, action_class.awaiting)
+            if buffer_len > 0:
+                self.recording.extend(list(self.buffer)[-buffer_len:])
+
             beginning = len(self.recording)
             action_recording = RecorderAction(action_class, 0, beginning)
             self.action_stack.append(action_recording)
@@ -135,8 +139,6 @@ class Recorder:
 
     def _remove(self, index: int):
         recorder_action = self.action_stack[index]
-        
-        self._set_action_end(recorder_action)
 
         self._cleanup_stack(index)
         
