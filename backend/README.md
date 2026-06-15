@@ -1,5 +1,5 @@
 <h1 align="center">
-📹 Activity Detector
+Activity Detector
 </h1>
 
 ## Notes
@@ -725,4 +725,3 @@ Check if frontend is running.
 ##### GET /video/{video_id}
 
 Presentation of video with video_id, in simple in-browser player.
-
