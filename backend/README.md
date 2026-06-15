@@ -31,13 +31,15 @@ docker compose -f docker/docker-compose.yml up
 *(db container must be up for backend to start without errors!)*
 ## Backend endpoints
 #### Videos
-##### GET /videos?page=&size=&sort=
+##### GET /videos?page=&size=&sort=&from=&to=
 Return JSON of registered video records page.
 **Params:**
 - *page* - page number (from 0, optional, default: page=0)
 - *size* - number of elements per page (optional, default: size=10)
 - *sort* - comma seperated sort list (optional, default: sort=uploadDate,desc&sort=name)  
   *To sort the results by more than one property, keep adding as many sort=PROPERTY parameters as you need.*
+- *from* - filter videos from this date-time (ISO-8601 format, optional)
+- *to* - filter videos up to this date-time (ISO-8601 format, optional)
 
 **Example request**  
 `http://localhost:8080/videos?size=2`  
@@ -74,13 +76,15 @@ Return JSON of registered video records page.
 }
 ```
 
-##### GET /videos/sequences?page=&size=&sort=
+##### GET /videos/sequences?page=&size=&sort=&from=&to=
 Returns JSON of video sequences.
 **Params:**
 - *page* - page number (from 0, optional, default: page=0)
 - *size* - number of elements per page (optional, default: size=10)
 - *sort* - comma seperated sort list (optional, default: sort=uploadDate,desc&sort=name)  
   *To sort the results by more than one property, keep adding as many sort=PROPERTY parameters as you need.*
+- *from* - filter sequences from this date-time (ISO-8601 format, optional)
+- *to* - filter sequences up to this date-time (ISO-8601 format, optional)
 
 **Example request**  
 `http://localhost:8080/videos/sequences?size=3`  
@@ -199,8 +203,40 @@ Specified video details.
 ##### GET /videos/{video_id}
 Request for video partial content.
 
-##### GET /videos/sequences/{originId}/manifest.m3u8
-Returns manifest file for HLS protocol.
+##### GET /videos/sequences/{originId}/manifest.mpd
+Returns manifest file for DASH protocol (Dynamic Adaptive Streaming over HTTP).
+**Params:**
+- *originId* - origin video's id
+
+**Example request**  
+`http://localhost:8080/videos/sequences/14bbd270-e4e9-4797-9f2e-df638263cc38/manifest.mpd`
+
+##### GET /videos/{fileIdentifier}/manifest.mpd
+Returns manifest file for DASH protocol for a single video.
+**Params:**
+- *fileIdentifier* - video identifier
+
+**Example request**  
+`http://localhost:8080/videos/736b52f2-c2e3-4e83-9f17-2077f18ec9cd/manifest.mpd`
+
+##### GET /videos/sequences/{originId}/dash/{videoId}/{assetPath}
+Returns DASH asset (segment or initialization segment) for a video in a sequence.
+**Params:**
+- *originId* - origin video's id
+- *videoId* - video id within the sequence
+- *assetPath* - path to the requested asset
+
+**Example request**  
+`http://localhost:8080/videos/sequences/14bbd270-e4e9-4797-9f2e-df638263cc38/dash/5d4628aa-d61a-4391-b1d8-1f37617d3571/segment.m4s`
+
+##### GET /videos/{fileIdentifier}/dash/{assetPath}
+Returns DASH asset for a single video.
+**Params:**
+- *fileIdentifier* - video identifier
+- *assetPath* - path to the requested asset
+
+**Example request**  
+`http://localhost:8080/videos/736b52f2-c2e3-4e83-9f17-2077f18ec9cd/dash/segment.m4s`
 
 ##### POST /videos/upload
 *multipart/form-data*
@@ -258,6 +294,16 @@ Deletes video from database and disk space.
 **Example request**
 ```
 curl -X DELETE http://localhost:8080/videos/1c383b78-63a7-4058-8297-55e8a873f06b
+```
+
+##### DELETE /videos/sequences/{fileIdentifier}
+Deletes video sequence from database and disk space.
+**Params:**
+- *fileIdentifier* - video sequence identifier (origin video id)
+
+**Example request**
+```
+curl -X DELETE http://localhost:8080/videos/sequences/14bbd270-e4e9-4797-9f2e-df638263cc38
 ```
 
 #### Detection rules
@@ -426,6 +472,145 @@ Deletes specified template.
 **Example request**
 ```
 curl -X DELETE 'http://localhost:8080/rules/?name=Malware_Detection_v2'
+```
+
+#### Forbidden Zones
+
+##### GET /zones
+Returns JSON of all forbidden zones.
+
+**Example request**  
+`http://localhost:8080/zones`
+
+**Example response**
+```json
+[
+  {
+    "id": 1,
+    "name": "Restricted Area A",
+    "policy": "ALERT",
+    "points": [[100.0, 150.0], [200.0, 150.0], [200.0, 250.0], [100.0, 250.0]],
+    "active": true,
+    "reference_video_id": "736b52f2-c2e3-4e83-9f17-2077f18ec9cd",
+    "aspect_ratio": 1.5
+  }
+]
+```
+
+##### POST /zones
+Creates new forbidden zone.
+
+**Example request body**
+```json
+{
+  "name": "Restricted Area A",
+  "points": [[100.0, 150.0], [200.0, 150.0], [200.0, 250.0], [100.0, 250.0]],
+  "reference_video_id": "736b52f2-c2e3-4e83-9f17-2077f18ec9cd",
+  "aspect_ratio": 1.5
+}
+```
+
+**Example request**
+```
+curl -X POST 'http://localhost:8080/zones' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "name": "Restricted Area A",
+    "points": [[100.0, 150.0], [200.0, 150.0], [200.0, 250.0], [100.0, 250.0]],
+    "reference_video_id": "736b52f2-c2e3-4e83-9f17-2077f18ec9cd",
+    "aspect_ratio": 1.5
+  }'
+```
+
+##### PUT /zones/{id}
+Updates an existing forbidden zone.
+
+**Params:**
+- *id* - zone id
+
+**Example request body**
+```json
+{
+  "name": "Restricted Area A Updated",
+  "points": [[100.0, 150.0], [250.0, 150.0], [250.0, 300.0], [100.0, 300.0]],
+  "reference_video_id": "736b52f2-c2e3-4e83-9f17-2077f18ec9cd",
+  "aspect_ratio": 2.0
+}
+```
+
+**Example request**
+```
+curl -X PUT 'http://localhost:8080/zones/1' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "name": "Restricted Area A Updated",
+    "points": [[100.0, 150.0], [250.0, 150.0], [250.0, 300.0], [100.0, 300.0]],
+    "reference_video_id": "736b52f2-c2e3-4e83-9f17-2077f18ec9cd",
+    "aspect_ratio": 2.0
+  }'
+```
+
+**Example response**
+```json
+{
+  "id": 1,
+  "name": "Restricted Area A Updated",
+  "policy": "ALERT",
+  "points": [[100.0, 150.0], [250.0, 150.0], [250.0, 300.0], [100.0, 300.0]],
+  "active": true,
+  "reference_video_id": "736b52f2-c2e3-4e83-9f17-2077f18ec9cd",
+  "aspect_ratio": 2.0
+}
+```
+
+##### DELETE /zones/{id}
+Deletes forbidden zone.
+
+**Params:**
+- *id* - zone id
+
+**Example request**
+```
+curl -X DELETE 'http://localhost:8080/zones/1'
+```
+
+#### Detector Configuration
+
+##### GET /detector/config
+Returns current detector configuration including zones, crowd detection settings, and action classes.
+
+**Headers (optional):**
+- *If-None-Match* - ETag for cache validation
+
+**Example request**  
+`http://localhost:8080/detector/config`
+
+**Example response**
+```json
+{
+  "version": "1.0.0",
+  "zones": [
+    {
+      "name": "Restricted Area A",
+      "policy": "ALERT",
+      "points": [[100.0, 150.0], [200.0, 150.0], [200.0, 250.0], [100.0, 250.0]]
+    }
+  ],
+  "crowd": {
+    "min_people": 5,
+    "radius_px": 100.0
+  },
+  "action_classes": [
+    {
+      "name": "running",
+      "template": "human_movement_fast",
+      "thresholds": {
+        "confidence": 80
+      },
+      "warnings": ["High activity detected"]
+    }
+  ]
+}
 ```
 
 
