@@ -1,5 +1,5 @@
 <h1 align="center">
-📹 Activity Detector
+Activity Detector
 </h1>
 
 <div align="center">

@@ -1,14 +1,18 @@
-# Detector
+<h1 align="center">
+Activity Detector
+</h1>
 
 An application for detecting objects and actions in video streams. It uses YOLO models (detection + pose) and LSTM for activity classification.
 
 **Key Features**
+
 - Object and person tracking (Ultralytics YOLO)
 - Pose estimation and feature extraction
 - Sequence classification (LSTM) for actions
 - Sending clips to the backend
 
 **Requirements**
+
 - uv dependency manager
 - Docker with GPU support (NVIDIA runtime)
 
@@ -34,6 +38,7 @@ docker run --gpus all --name detector \
 ```
 
 ## Configuration and environment variables
+
 The configuration is loaded from the `.env` file. Key settings:
 
 - `APP_MODE` - operating mode: `VIDEO` (file), `USB` (camera), `FOLDER` (image folder), `IMAGE` (single photo), `RTSP` (RTSP stream). Default is `VIDEO`.
@@ -53,15 +58,18 @@ The configuration is loaded from the `.env` file. Key settings:
 Many of the above variables have sample values in `compose.yaml`.
 
 ## Required Models and Files
+
 - The `models/final_models/` folder should contains the required models (`yolo26m_main.pt`, `yolo11m-pose.pt`, `lstm_5class_1.pth`, etc.).
 - The LSTM weights file is required-the application will terminate if it cannot find the LSTM model.
 - The `vectors/vectors.csv` file (action vectors) is used by `Recorder` to load action classes.
 
 ## Operating Modes and Examples
+
 - `APP_MODE=VIDEO` + `SOURCE_PATH=/path/to/video.mp4` - video file processing.
 - `APP_MODE=RTSP` - configure camera parameters in `.env`.
 
 ## Saving and uploading clips
+
 - If `SAVE_CLIPS=True`, clips with detections will be saved to `CLIP_FOLDER`.
 - If `UPLOAD_CLIPS=True`, saved clips will be uploaded to `BACKEND_UPLOAD_URL`.
 
@@ -70,9 +78,11 @@ Many of the above variables have sample values in `compose.yaml`.
 ```
 uv run python -m src.tools.scene_annotator --source data/test.mp4 --name parking_west
 ```
+
 LMB klika wierzchołki, `ENTER` zamyka wielokąt, `S` zapisuje `scenes/<name>.json`, `Q` wyjście. Wskaż plik w `.env` przez `SCENE_CONFIG_PATH=scenes/parking_west.json` i uruchom `uv run python main.py` — reguła `zone_intrusion` z `vectors/example.csv` zacznie generować klipy gdy ktoś wejdzie w zaznaczony obszar.
 
 ## Repository structure
+
 - `main.py` - application entry point.
 - `src/detector/` - implementation of the detector, configuration, sources, and recording.
 - `models/` - folder containing models.
