@@ -33,7 +33,8 @@ class RecState(Enum):
 @dataclass
 class UploadTask:
     """Represents a clip upload task with dependencies"""
-    clip: list[FrameVector]
+    # Zmiana: clip może być None, co pozwala zwolnić pamięć po wysłaniu
+    clip: list[FrameVector] | None
     filename: str
     details: FullStampModel
     state: RecState
@@ -41,8 +42,10 @@ class UploadTask:
     created_at: float | None = None
     retries: int = 5
     next_try_at: float | None = None
-    dependency: UploadTask | None = None  # Previous recording filename this depends on
-    stashed_dependency: UploadTask | None = None # Stashed for possible sequence continuity split
+    
+    # Zmiana: trzymamy tylko nazwy plików, aby uniknąć tworzenia łańcucha obiektów i wycieku pamięci
+    dependency_filename: str | None = None  
+    stashed_dependency_filename: str | None = None 
 
     def __post_init__(self):
         self.created_at = time.time()
@@ -58,9 +61,10 @@ class ClipUploader:
         # Słownik pamiętający wszystkie zadania (nawet te wysłane)
         self.task_history: dict[str, UploadTask] = {}
 
-        # TODO dodać obrabianie odłożonych nagrań
-        self.davy_jones_locker: deque[UploadTask] = deque()
+        # Zmiana: maxlen zapobiega nieskończonemu pożeraniu pamięci przez martwe zadania
+        self.davy_jones_locker: deque[UploadTask] = deque(maxlen=20)
         self.davy_jones_lock = threading.Lock()
+        
         self.worker_thread = None
         self.stop_worker = False
 
@@ -107,7 +111,6 @@ class ClipUploader:
 
     def _is_task_ready(self, task: UploadTask) -> bool:
         """Check if a task is ready to upload"""
-        
         if task.next_try_at is not None:
             if time.time() < task.next_try_at:
                 return False
@@ -121,19 +124,27 @@ class ClipUploader:
     def _is_dependency_satisfied(self, task: UploadTask) -> bool:
         """Check if the dependency recording has been uploaded and has an ID
             Also stash the dependency if needed"""
-        dependency = task.dependency
+        
+        if task.dependency_filename is None:
+            return True
 
-        if dependency is None:
+        # Pobieramy stan poprzednika z historii po nazwie pliku
+        dependency_task = self.task_history.get(task.dependency_filename)
+
+        # Zabezpieczenie: jeśli poprzednik został usunięty z historii, puszczamy to zadanie,
+        # aby zablokowana zależność nie zatrzymała przetwarzania na zawsze.
+        if dependency_task is None:
+            logger.warning(f"Dependency {task.dependency_filename} not found in history. Releasing constraint.")
             return True
 
         # Jeśli zależność trafiła do stasha, odpinamy ją i pozwalamy na wysyłkę bez id
-        if dependency.state == RecState.STASHED:
-            task.stashed_dependency = dependency
-            task.dependency = None
+        if dependency_task.state == RecState.STASHED:
+            task.stashed_dependency_filename = task.dependency_filename
+            task.dependency_filename = None
             return True
 
         # Zwracamy True tylko wtedy, kiedy poprzednik dostał już ID z backendu
-        if dependency.state == RecState.SENT and dependency.id is not None:
+        if dependency_task.state == RecState.SENT and dependency_task.id is not None:
             return True
 
         return False
@@ -143,8 +154,10 @@ class ClipUploader:
         try:
             # Get the previous recording ID if dependency is satisfied
             prev_id = None
-            if task.dependency is not None:
-                prev_id = task.dependency.id
+            if task.dependency_filename is not None:
+                dependency_task = self.task_history.get(task.dependency_filename)
+                if dependency_task:
+                    prev_id = dependency_task.id
 
             # Mark as uploading
             task.state = RecState.UPLOADING
@@ -156,6 +169,10 @@ class ClipUploader:
                 prev_id=prev_id
             )
 
+            # ZWALNIANIE PAMIĘCI: Usuwamy listę klatek zaraz po udanym wysłaniu.
+            # Zadanie zostaje w task_history z samym metadanymi.
+            task.clip = None
+
             with self.upload_lock:
                 if task in self.upload_queue:
                     self.upload_queue.remove(task)
@@ -163,8 +180,8 @@ class ClipUploader:
         except Exception as e:
             logger.error(f"Failed to upload clip '{task.filename}': {e}", exc_info=True)
 
-            task.dependency = task.stashed_dependency
-            task.stashed_dependency = None
+            task.dependency_filename = task.stashed_dependency_filename
+            task.stashed_dependency_filename = None
             task.retries -= 1
 
             if task.retries <= 0:
@@ -187,26 +204,20 @@ class ClipUploader:
             dependency_filename: str | None,
     ) -> None:
         
-        dependency = None
-
         with self.upload_lock:
-            if dependency_filename is not None:
-                # Szukamy bezpośrednio w rejestrze historii po nazwie pliku
-                dependency = self.task_history.get(dependency_filename)
-        
             task = UploadTask(
                 clip=clip,
                 filename=filename,
                 details=details,
                 state=RecState.AWAIT_UPLOAD,
-                dependency=dependency
+                dependency_filename=dependency_filename
             )
         
             # Dodajemy zadanie do aktywnej kolejki i do rejestru historycznego
             self.upload_queue.append(task)
             self.task_history[filename] = task
             
-            # Zabezpieczenie przed nieskończonym rozrostem słownika
+            # Zabezpieczenie przed rozrostem słownika - usunięcie najstarszego wpisu
             if len(self.task_history) > 100:
                 oldest_key = next(iter(self.task_history))
                 del self.task_history[oldest_key]
@@ -221,7 +232,7 @@ class ClipUploader:
         filename = task.filename
 
         if not clip:
-            raise ValueError("Clip is empty, nothing to upload.")
+            raise ValueError("Clip is empty or already released, nothing to upload.")
 
         data = {
             "video-name": filename,
@@ -243,6 +254,7 @@ class ClipUploader:
         stream.height = height
         stream.pix_fmt = 'yuv420p'
         frames = self.anonymizer.anonymize_clip(clip)
+        
         for frame_data in frames:
             img_array = frame_data
             frame = av.VideoFrame.from_ndarray(img_array, format='bgr24')
