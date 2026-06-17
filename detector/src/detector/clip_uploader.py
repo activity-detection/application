@@ -15,6 +15,7 @@ from src.detector.vectors import FrameVector
 from src.detector.timestamper import FullStampModel
 from src.detector.config import Config
 from src.detector import logger
+from src.detector.anonymizer import Anonymizer
 
 PAUSE_ON_ERROR = 1.0
 UPLOAD_LOOP_PAUSE = 0.5
@@ -49,6 +50,7 @@ class UploadTask:
 
 class ClipUploader:
     def __init__(self) -> None:
+        self.anonymizer = Anonymizer()
         self.clip_folder = Path(Config.CLIP_FOLDER or "clips")
         self.upload_queue: deque[UploadTask] = deque()
         self.upload_lock = threading.Lock()
@@ -240,9 +242,9 @@ class ClipUploader:
         stream.width = width
         stream.height = height
         stream.pix_fmt = 'yuv420p'
-
-        for frame_data in clip:
-            img_array = frame_data['frame']
+        frames = self.anonymizer.anonymize_clip(clip)
+        for frame_data in frames:
+            img_array = frame_data
             frame = av.VideoFrame.from_ndarray(img_array, format='bgr24')
             for packet in stream.encode(frame):
                 container.mux(packet)
