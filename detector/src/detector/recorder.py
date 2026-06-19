@@ -177,7 +177,7 @@ class Recorder:
         clip = self.recording[offset:].copy()
 
         start_sec = int(recorder_action.beginning / Config.FRAME_RATE)
-        end_sec = int(recorder_action.end / Config.FRAME_RATE) + 1
+        end_sec = int(recorder_action.end / Config.FRAME_RATE)
         event_span = (start_sec, end_sec)
 
         action_name = recorder_action.action.name

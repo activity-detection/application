@@ -16,7 +16,8 @@ from src.detector import logger
 
 
 POSE_CONF = 0.3
-POSE_IMGSZ = 640
+POSE_IMGSZ = 1280
+BASE_IMGSZ = 1280
 STALE_TRACK_FRAMES = 5  # >tyle klatek bez detekcji -> wyzeruj historię tracku
 
 
@@ -78,7 +79,7 @@ class Detector:
         return vector_list
     
     def detect_objects(self, frames: list[np.ndarray]) -> list[ActionVector]: # detects and count objects on frame using yolo
-        results = self.base_model.track(frames, verbose=False, half=True)
+        results = self.base_model.track(frames, verbose=False, half=True, imgsz=BASE_IMGSZ)
         vector_list: list[ActionVector] = []
         for result in results:
             classes: list[str] = []

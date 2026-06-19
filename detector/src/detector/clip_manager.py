@@ -38,12 +38,7 @@ class ClipManager:
 
         dependency = None
         if Config.UPLOAD_CLIPS:
-            # Logger przed wywołaniem, żeby zobaczyć co wchodzi do funkcji:
-            logger.info(f"BEFORE DEP CHECK - Action: {action_name}, Counts (start/end): {inactive_counts}, Gap: {Config.SEQUENCE_FRAMES_GAP}, History: {self.prev_entries}")
-            
             dependency = self._get_dependency(action_name, filename, inactive_counts)
-            
-            logger.info(f"AFTER DEP CHECK - DEPENDENCY RESULT: {dependency}")
 
         # Dopiero teraz wątek może zająć się długotrwałym kodowaniem wideo
         if Config.SAVE_CLIPS:

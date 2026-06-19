@@ -63,7 +63,7 @@ def main():
         source = FPSResampledSource(source, TARGET_FPS)
     Config.FRAME_RATE = source.get_frame_rate()
     detector = Detector()
-    recorder = Recorder(2, 2, 6)
+    recorder = Recorder(3, 2, 6)
     poller = start_config_poller(source)
 
     # When live config polling is the source of truth, the backend is

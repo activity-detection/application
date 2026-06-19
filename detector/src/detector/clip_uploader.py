@@ -204,6 +204,8 @@ class ClipUploader:
             dependency_filename: str | None,
     ) -> None:
         
+        logger.info(F'WYSYŁKA KLIPU: {filename}')
+
         with self.upload_lock:
             task = UploadTask(
                 clip=clip,
@@ -276,10 +278,14 @@ class ClipUploader:
             "details": (None, json.dumps(details), "application/json"),
         }
         
+        logger.info(F'WYSYŁAM KLIP: {filename}')
         response = requests.post(Config.BACKEND_UPLOAD_URL, data=data, files=files, timeout=15)
+        logger.info(F'STATUS DLA PLIKU {filename}: {response}')
         response.raise_for_status()
 
         res_id = response.text
         
         task.state = RecState.SENT
         task.id = res_id
+
+        logger.info(F'KLIP WYSŁANY: {filename}')
