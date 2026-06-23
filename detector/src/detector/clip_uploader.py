@@ -8,11 +8,8 @@ import threading
 import requests
 import json
 import time
-import io
-import av
 
 from src.detector.timestamper import FullStampModel
-from src.detector.anonymizer import Anonymizer
 from src.detector.clip_saver import ClipSaver
 from src.detector.vectors import FrameVector
 from src.detector.config import Config
@@ -75,7 +72,6 @@ class StashedClip:
 
 class ClipUploader:
     def __init__(self) -> None:
-        self.anonymizer = Anonymizer()
         self.clip_saver = ClipSaver()
         self.clip_folder = Path(Config.CLIP_FOLDER or "clips")
         self.stash_folder = self.clip_folder / "davy_jones"
@@ -383,29 +379,7 @@ class ClipUploader:
         if not clip:
             raise ValueError("Clip is empty, nothing to upload.")
 
-        buffer = io.BytesIO()
-
-        container = av.open(buffer, mode='w', format='mp4')
-        stream = container.add_stream('libx264', rate=int(Config.FRAME_RATE))
-
-        first_frame = clip[0]['frame']
-        height, width, _ = first_frame.shape
-        stream.width = width
-        stream.height = height
-        stream.pix_fmt = 'yuv420p'
-        frames = self.anonymizer.anonymize_clip(clip)
-        for frame_data in frames:
-            img_array = frame_data
-            frame = av.VideoFrame.from_ndarray(img_array, format='bgr24')
-            for packet in stream.encode(frame):
-                container.mux(packet)
-
-        for packet in stream.encode():
-            container.mux(packet)
-
-        container.close()
-
-        video_bytes = buffer.getvalue()
+        video_bytes = self.clip_saver.to_bytes(clip)
         file_size_mb = len(video_bytes) / (1024 * 1024)
 
         logger.info(f"Uploading video: {filename} (Size: {file_size_mb:.2f} MB)")
