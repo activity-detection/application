@@ -24,6 +24,7 @@ class RecorderAction:
     offset: int
     beginning: int
     end: int = -1
+    end_idle: int = 0  # trailing idle frames at end; small => max_duration split (has continuation)
     
 
 class Recorder:
@@ -153,6 +154,9 @@ class Recorder:
 
     def _set_action_end(self, recorder_action: RecorderAction):
         action_class = recorder_action.action
+        # Capture trailing idle before it gets reset; used downstream to tell a
+        # max_duration split (has a following segment) from a real ending.
+        recorder_action.end_idle = action_class.idling_final
         end_shift = recorder_action.offset + action_class.idling_final
         recorder_action.end = len(self.recording) - end_shift
         action_class.idling_final = 0
@@ -177,7 +181,14 @@ class Recorder:
         clip = self.recording[offset:].copy()
 
         start_sec = int(recorder_action.beginning / Config.FRAME_RATE)
-        end_sec = int(recorder_action.end / Config.FRAME_RATE) + 1
+        end_sec = int(recorder_action.end / Config.FRAME_RATE)
+        # A clip cut by max_duration (small trailing idle) is followed by another
+        # segment, so keep its end exact to abut the next clip on the timeline.
+        # A real ending (large trailing idle) gets +1s so sub-second events still
+        # render a visible bar.
+        has_continuation = recorder_action.end_idle <= self.config.max_inactive_frames
+        if not has_continuation:
+            end_sec += 1
         event_span = (start_sec, end_sec)
 
         action_name = recorder_action.action.name
