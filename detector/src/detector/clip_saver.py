@@ -33,6 +33,9 @@ class ClipSaver:
         stream.width = width
         stream.height = height
         stream.pix_fmt = "yuv420p"
+        # Favor encode speed over file size: the upload worker is encode-bound,
+        # so a fast preset lets the queue keep up with clip production.
+        stream.options = {"preset": "ultrafast"}
 
         try:
             for frame_data in frames:

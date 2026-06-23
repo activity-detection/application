@@ -27,7 +27,7 @@ STASH_TTL = 120.0              # a stashed clip is permanently removed after 2 m
 # recorder's continuation gap plus the predecessor staying alive while a stashed
 # successor retries (up to STASH_TTL). Past that horizon no clip can link to it,
 # so the history entry is evictable. Kept well above STASH_TTL for safety.
-HISTORY_TTL = 300.0
+HISTORY_TTL = 180.0
 
 
 class RecState(Enum):
