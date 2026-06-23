@@ -23,6 +23,11 @@ SIZE_LOG_INTERVAL = 5.0  # how often to log struct sizes (memory diagnostics)
 DAVY_JONES_LOOP_PAUSE = 10.0   # davy jones polled less frequently than the main queue
 DAVY_JONES_RETRY_WAIT = 10.0   # backoff between resend attempts of a stashed clip
 STASH_TTL = 120.0              # a stashed clip is permanently removed after 2 min
+# A successor can reference a predecessor only within a bounded window: the
+# recorder's continuation gap plus the predecessor staying alive while a stashed
+# successor retries (up to STASH_TTL). Past that horizon no clip can link to it,
+# so the history entry is evictable. Kept well above STASH_TTL for safety.
+HISTORY_TTL = 300.0
 
 
 class RecState(Enum):
@@ -35,8 +40,13 @@ class RecState(Enum):
 
 @dataclass(frozen=True)
 class SentClip:
+    """A confirmed, sent clip kept in history only to resolve a successor's link.
+
+    `sent_at` drives TTL eviction (HISTORY_TTL): once no future clip can still
+    reference it, the entry is dropped."""
     filename: str
     id: str
+    sent_at: float
 
 
 @dataclass
@@ -217,9 +227,11 @@ class ClipUploader:
                 # Task is sent: drop it from the live dict, record a lightweight
                 # history entry and remove it from the upload queue.
                 self.live_by_name.pop(task.filename, None)
-                self.task_history[task.filename] = SentClip(task.filename, task.id)  # type: ignore[arg-type]
+                self.task_history[task.filename] = SentClip(task.filename, task.id, time.time())  # type: ignore[arg-type]
                 if task in self.upload_queue:
                     self.upload_queue.remove(task)
+                # Predecessor will never be linked again
+                self.task_history.pop(task.prev_filename, None)  # type: ignore[arg-type]
                 logger.info(f"Cleanup after upload: {task.filename}")
 
         except Exception as e:
@@ -269,10 +281,28 @@ class ClipUploader:
         while not self.stop_worker:
             try:
                 self._purge_expired_stashed()
+                self._purge_expired_history()
                 self._try_one_stashed()
             except Exception as e:
                 logger.error(f"Error in davy jones worker: {e}", exc_info=True)
             time.sleep(DAVY_JONES_LOOP_PAUSE)
+
+    def _purge_expired_history(self) -> None:
+        """Evict history entries past HISTORY_TTL.
+
+        Once a sent clip is older than the window in which any successor could
+        still reference it, its id is no longer needed and the entry is dropped.
+        TTL keeps history bounded regardless of load, without a fixed cap."""
+        now = time.time()
+        with self.upload_lock:
+            expired = [
+                name for name, sent in self.task_history.items()
+                if now - sent.sent_at > HISTORY_TTL
+            ]
+            for name in expired:
+                del self.task_history[name]
+        if expired:
+            logger.info(f"Evicted {len(expired)} expired history entries")
 
     def _try_one_stashed(self) -> None:
         """Pick one ready stashed clip (head before the rest) and resend it."""
@@ -320,7 +350,9 @@ class ClipUploader:
             res_id = self._post_video(stashed.filename, video_bytes, stashed.details, prev_id)
 
             with self.upload_lock:
-                self.task_history[stashed.filename] = SentClip(stashed.filename, res_id)
+                self.task_history[stashed.filename] = SentClip(stashed.filename, res_id, time.time())
+                # Eagerly evict the predecessor (1:1 chain); TTL is the backstop.
+                self.task_history.pop(stashed.prev_filename, None)  # type: ignore[arg-type]
             with self.davy_jones_lock:
                 self.stashed_by_name.pop(stashed.filename, None)
                 if stashed in self.davy_jones_locker:
