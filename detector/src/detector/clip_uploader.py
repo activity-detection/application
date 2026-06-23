@@ -20,6 +20,7 @@ from src.detector.anonymizer import Anonymizer
 PAUSE_ON_ERROR = 1.0
 UPLOAD_LOOP_PAUSE = 0.5
 UPLOAD_WAIT = 1.0
+SIZE_LOG_INTERVAL = 5.0  # co ile sekund logować rozmiary struktur (diagnostyka pamięci)
 
 
 class RecState(Enum):
@@ -30,19 +31,24 @@ class RecState(Enum):
     STASHED = auto()
 
 
+@dataclass(frozen=True)
+class SentClip:
+    filename: str
+    id: str
+
+
 @dataclass
 class UploadTask:
     """Represents a clip upload task with dependencies"""
-    clip: list[FrameVector]
+    clip: list[FrameVector] | None
     filename: str
-    details: FullStampModel
+    details: FullStampModel | None
     state: RecState
     id: str | None = None
     created_at: float | None = None
     retries: int = 5
     next_try_at: float | None = None
-    dependency: UploadTask | None = None  # Previous recording filename this depends on
-    stashed_dependency: UploadTask | None = None # Stashed for possible sequence continuity split
+    prev_filename: str | None = None
 
     def __post_init__(self):
         self.created_at = time.time()
@@ -52,17 +58,18 @@ class ClipUploader:
     def __init__(self) -> None:
         self.anonymizer = Anonymizer()
         self.clip_folder = Path(Config.CLIP_FOLDER or "clips")
+        
         self.upload_queue: deque[UploadTask] = deque()
-        self.upload_lock = threading.Lock()
-
-        # Słownik pamiętający wszystkie zadania (nawet te wysłane)
-        self.task_history: dict[str, UploadTask] = {}
-
+        self.live_by_name: dict[str, UploadTask] = {} # lookup for upload queue
+        self.task_history: dict[str, SentClip] = {}
         # TODO dodać obrabianie odłożonych nagrań
         self.davy_jones_locker: deque[UploadTask] = deque()
+        
+        self.upload_lock = threading.Lock()
         self.davy_jones_lock = threading.Lock()
         self.worker_thread = None
         self.stop_worker = False
+        self._last_size_log = 0.0
 
         self._start_upload_worker()
 
@@ -85,9 +92,26 @@ class ClipUploader:
             self.worker_thread.join(timeout=5.0)
             logger.info("Stopped upload worker thread")
 
+    def _maybe_log_sizes(self):
+        """Diagnostyka wycieku: okresowo loguje rozmiary kolejki, historii i stasha."""
+        now = time.time()
+        if now - self._last_size_log < SIZE_LOG_INTERVAL:
+            return
+        self._last_size_log = now
+        with self.upload_lock:
+            queue_len = len(self.upload_queue)
+            history_len = len(self.task_history)
+        with self.davy_jones_lock:
+            stash_len = len(self.davy_jones_locker)
+        logger.info(
+            "Rozmiary uploadera: queue=%d, history=%d, davy_jones=%d",
+            queue_len, history_len, stash_len,
+        )
+
     def _upload_worker_loop(self):
         while not self.stop_worker:
             try:
+                self._maybe_log_sizes()
                 task_to_process = None
 
                 with self.upload_lock:
@@ -107,49 +131,44 @@ class ClipUploader:
 
     def _is_task_ready(self, task: UploadTask) -> bool:
         """Check if a task is ready to upload"""
-        
-        if task.next_try_at is not None:
-            if time.time() < task.next_try_at:
-                return False
+        if task.next_try_at is not None and time.time() < task.next_try_at:
+            return False
+        ready, _ = self._resolve_prev(task)
+        return ready
 
-        # Check if dependency is satisfied
-        if self._is_dependency_satisfied(task):
-            return True
+    def _resolve_prev(self, task: UploadTask) -> tuple[bool, str | None]:
+        """Zwraca (gotowy_do_wysyłki, prev_id).
 
-        return False
+        Niezmiennik: prev_id != None TYLKO gdy poprzednik jest potwierdzony na
+        backendzie (SENT). Nigdy nie zwracamy id klipu, którego tam nie ma.
+        Wołać pod self.upload_lock (czyta live_by_name / task_history).
+        """
+        name = task.prev_filename
+        # No dependency, head
+        if name is None:
+            return True, None
 
-    def _is_dependency_satisfied(self, task: UploadTask) -> bool:
-        """Check if the dependency recording has been uploaded and has an ID
-            Also stash the dependency if needed"""
-        dependency = task.dependency
+        sent = self.task_history.get(name)
+        # Dependency is sent, return backend ID
+        if sent is not None:
+            return True, sent.id
 
-        if dependency is None:
-            return True
+        # Dependency is still being processed, return false and wait
+        if name in self.live_by_name:
+            return False, None
 
-        # Jeśli zależność trafiła do stasha, odpinamy ją i pozwalamy na wysyłkę bez id
-        if dependency.state == RecState.STASHED:
-            task.stashed_dependency = dependency
-            task.dependency = None
-            return True
-
-        # Zwracamy True tylko wtedy, kiedy poprzednik dostał już ID z backendu
-        if dependency.state == RecState.SENT and dependency.id is not None:
-            return True
-
-        return False
-
+        # Dependency exists but nowhere to be found (stashed). Behave like head
+        return True, None
+    
     def _process_upload_task(self, task: UploadTask):
         """Process a single upload task"""
         try:
-            # Get the previous recording ID if dependency is satisfied
-            prev_id = None
-            if task.dependency is not None:
-                prev_id = task.dependency.id
+            # Get prev_id. Might be None
+            with self.upload_lock:
+                _, prev_id = self._resolve_prev(task)
 
-            # Mark as uploading
             task.state = RecState.UPLOADING
 
-            # Upload the clip
             self._upload_clip(
                 task=task,
                 details=task.details,
@@ -157,28 +176,32 @@ class ClipUploader:
             )
 
             with self.upload_lock:
+                # Since task is sent, pop it from live dict,  
+                # add it to task history and remove it from upload queue
+                self.live_by_name.pop(task.filename, None)
+                self.task_history[task.filename] = SentClip(task.filename, task.id)  # type: ignore[arg-type]
                 if task in self.upload_queue:
                     self.upload_queue.remove(task)
+                logger.info("Czyszczenie po upload")
 
         except Exception as e:
             logger.error(f"Failed to upload clip '{task.filename}': {e}", exc_info=True)
 
-            task.dependency = task.stashed_dependency
-            task.stashed_dependency = None
             task.retries -= 1
 
             if task.retries <= 0:
                 with self.upload_lock:
+                    self.live_by_name.pop(task.filename, None)
                     if task in self.upload_queue:
                         self.upload_queue.remove(task)
-                
+
                 with self.davy_jones_lock:
                     task.state = RecState.STASHED
                     self.davy_jones_locker.append(task)
+            else:
+                task.next_try_at = time.time() + UPLOAD_WAIT
+                task.state = RecState.AWAIT_UPLOAD
 
-            task.next_try_at = time.time() + UPLOAD_WAIT
-            task.state = RecState.AWAIT_UPLOAD
-    
     def start_upload(
             self,
             clip: list[FrameVector],
@@ -186,35 +209,22 @@ class ClipUploader:
             details: FullStampModel,
             dependency_filename: str | None,
     ) -> None:
-        
-        dependency = None
+        task = UploadTask(
+            clip=clip,
+            filename=filename,
+            details=details,
+            state=RecState.AWAIT_UPLOAD,
+            prev_filename=dependency_filename,
+        )
 
         with self.upload_lock:
-            if dependency_filename is not None:
-                # Szukamy bezpośrednio w rejestrze historii po nazwie pliku
-                dependency = self.task_history.get(dependency_filename)
-        
-            task = UploadTask(
-                clip=clip,
-                filename=filename,
-                details=details,
-                state=RecState.AWAIT_UPLOAD,
-                dependency=dependency
-            )
-        
-            # Dodajemy zadanie do aktywnej kolejki i do rejestru historycznego
             self.upload_queue.append(task)
-            self.task_history[filename] = task
-            
-            # Zabezpieczenie przed nieskończonym rozrostem słownika
-            if len(self.task_history) > 100:
-                oldest_key = next(iter(self.task_history))
-                del self.task_history[oldest_key]
+            self.live_by_name[filename] = task
 
     def _upload_clip(
             self,
             task: UploadTask,
-            details: FullStampModel,
+            details: FullStampModel | None,
             prev_id: str | None = None,
     ) -> None:
         clip = task.clip
