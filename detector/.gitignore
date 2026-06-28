@@ -3,7 +3,6 @@
 .env.*
 
 # Model weights and engine files
-**/*.pt
 **/*.engine
 **/runs/
 
