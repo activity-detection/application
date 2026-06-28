@@ -14,15 +14,14 @@ from src.detector.clip_saver import ClipSaver
 from src.detector.vectors import FrameVector
 from src.detector.config import Config
 from src.detector import logger
-from src.detector.anonymizer import Anonymizer
 
 
 PAUSE_ON_ERROR = 1.0
 UPLOAD_LOOP_PAUSE = 0.5
 UPLOAD_WAIT = 1.0
 SIZE_LOG_INTERVAL = 5.0  # how often to log struct sizes (memory diagnostics)
-DAVY_JONES_LOOP_PAUSE = 10.0   # davy jones polled less frequently than the main queue
-DAVY_JONES_RETRY_WAIT = 10.0   # backoff between resend attempts of a stashed clip
+FALLBACK_QUEUE_LOOP_PAUSE = 10.0   # fallback queue polled less frequently than the main queue
+FALLBACK_QUEUE_RETRY_WAIT = 10.0   # backoff between resend attempts of a stashed clip
 STASH_TTL = 120.0              # a stashed clip is permanently removed after 2 min
 # A successor can reference a predecessor only within a bounded window: the
 # recorder's continuation gap plus the predecessor staying alive while a stashed
@@ -69,7 +68,7 @@ class UploadTask:
 
 @dataclass
 class StashedClip:
-    """A clip parked in davy jones — encoded on disk, only metadata kept in RAM.
+    """A clip parked in the fallback queue, encoded on disk with only metadata in RAM.
 
     `prev_filename` keeps the logical link so the order can be reconstructed on
     resend (head before the rest). `stashed_at` drives the TTL (STASH_TTL)."""
@@ -85,7 +84,7 @@ class ClipUploader:
     def __init__(self) -> None:
         self.clip_saver = ClipSaver()
         self.clip_folder = Path(Config.CLIP_FOLDER or "clips")
-        self.stash_folder = self.clip_folder / "davy_jones"
+        self.stash_folder = self.clip_folder / "fallback"
         try:
             self.stash_folder.mkdir(parents=True, exist_ok=True)
         except OSError as e:
@@ -94,23 +93,23 @@ class ClipUploader:
         self.upload_queue: deque[UploadTask] = deque()
         self.live_by_name: dict[str, UploadTask] = {} # lookup for upload queue
         self.task_history: dict[str, SentClip] = {}
-        self.davy_jones_locker: deque[StashedClip] = deque()
+        self.fallback_queue: deque[StashedClip] = deque()
         self.stashed_by_name: dict[str, StashedClip] = {} # lookup for replay ordering
 
         self.upload_lock = threading.Lock()
-        self.davy_jones_lock = threading.Lock()
+        self.fallback_queue_lock = threading.Lock()
         self.worker_thread = None
-        self.davy_jones_thread = None
+        self.fallback_queue_thread = None
         self.stop_worker = False
         self._last_size_log = 0.0
 
         self._start_upload_worker()
-        self._start_davy_jones_worker()
+        self._start_fallback_queue_worker()
 
     def __del__(self):
         """Cleanup worker threads on destruction"""
         self._stop_upload_worker()
-        self._stop_davy_jones_worker()
+        self._stop_fallback_queue_worker()
 
     def _start_upload_worker(self):
         """Start the background upload worker thread"""
@@ -127,20 +126,20 @@ class ClipUploader:
             self.worker_thread.join(timeout=5.0)
             logger.info("Stopped upload worker thread")
 
-    def _start_davy_jones_worker(self):
-        """Start the background davy jones (retry-from-disk) worker thread"""
-        if self.davy_jones_thread is None or not self.davy_jones_thread.is_alive():
+    def _start_fallback_queue_worker(self):
+        """Start the background fallback queue (retry-from-disk) worker thread"""
+        if self.fallback_queue_thread is None or not self.fallback_queue_thread.is_alive():
             self.stop_worker = False
-            self.davy_jones_thread = threading.Thread(target=self._davy_jones_worker_loop, daemon=True)
-            self.davy_jones_thread.start()
-            logger.info("Started davy jones worker thread")
+            self.fallback_queue_thread = threading.Thread(target=self._fallback_queue_worker_loop, daemon=True)
+            self.fallback_queue_thread.start()
+            logger.info("Started fallback queue worker thread")
 
-    def _stop_davy_jones_worker(self):
-        """Stop the background davy jones worker thread"""
-        if self.davy_jones_thread and self.davy_jones_thread.is_alive():
+    def _stop_fallback_queue_worker(self):
+        """Stop the background fallback queue worker thread"""
+        if self.fallback_queue_thread and self.fallback_queue_thread.is_alive():
             self.stop_worker = True
-            self.davy_jones_thread.join(timeout=5.0)
-            logger.info("Stopped davy jones worker thread")
+            self.fallback_queue_thread.join(timeout=5.0)
+            logger.info("Stopped fallback queue worker thread")
 
     def _maybe_log_sizes(self):
         """Leak diagnostics: periodically log queue, history and stash sizes."""
@@ -151,10 +150,10 @@ class ClipUploader:
         with self.upload_lock:
             queue_len = len(self.upload_queue)
             history_len = len(self.task_history)
-        with self.davy_jones_lock:
-            stash_len = len(self.davy_jones_locker)
+        with self.fallback_queue_lock:
+            stash_len = len(self.fallback_queue)
         logger.info(
-            f"Uploader sizes: queue={queue_len}, history={history_len}, davy_jones={stash_len}"
+            f"Uploader sizes: queue={queue_len}, history={history_len}, fallback_queue={stash_len}"
         )
 
     def _upload_worker_loop(self):
@@ -167,8 +166,8 @@ class ClipUploader:
                     for task in self.upload_queue:
                         if self._is_task_ready(task):
                             task_to_process = task
-                            break 
-                
+                            break
+
                 if task_to_process:
                     self._process_upload_task(task_to_process)
                 else:
@@ -208,7 +207,7 @@ class ClipUploader:
 
         # Predecessor nowhere to be found (stashed). Behave like head
         return True, None
-    
+
     def _process_upload_task(self, task: UploadTask):
         """Process a single upload task"""
         try:
@@ -250,11 +249,11 @@ class ClipUploader:
                 task.next_try_at = time.time() + UPLOAD_WAIT
                 task.state = RecState.AWAIT_UPLOAD
 
-    # ----- davy jones locker (disk-backed retry) -------------------------
+    # ----- fallback queue (disk-backed retry) ----------------------------
 
     def _stash_task(self, task: UploadTask) -> None:
         """Flush the clip to disk (ClipSaver) and park a lightweight StashedClip
-        in davy jones. Frames are not kept in RAM and only the file path survives."""
+        in the fallback queue. Frames are not kept in RAM, only the file path survives."""
         if not task.clip:
             logger.error(f"Cannot stash '{task.filename}': clip is empty")
             return
@@ -273,20 +272,20 @@ class ClipUploader:
             video_path=video_path,
             stashed_at=time.time(),
         )
-        with self.davy_jones_lock:
-            self.davy_jones_locker.append(stashed)
+        with self.fallback_queue_lock:
+            self.fallback_queue.append(stashed)
             self.stashed_by_name[task.filename] = stashed
         logger.info(f"Stashed clip to disk: {video_path.name}")
 
-    def _davy_jones_worker_loop(self) -> None:
+    def _fallback_queue_worker_loop(self) -> None:
         while not self.stop_worker:
             try:
                 self._purge_expired_stashed()
                 self._purge_expired_history()
                 self._try_one_stashed()
             except Exception as e:
-                logger.error(f"Error in davy jones worker: {e}", exc_info=True)
-            time.sleep(DAVY_JONES_LOOP_PAUSE)
+                logger.error(f"Error in fallback queue worker: {e}", exc_info=True)
+            time.sleep(FALLBACK_QUEUE_LOOP_PAUSE)
 
     def _purge_expired_history(self) -> None:
         """Evict history entries past HISTORY_TTL.
@@ -308,8 +307,8 @@ class ClipUploader:
     def _try_one_stashed(self) -> None:
         """Pick one ready stashed clip (head before the rest) and resend it."""
         now = time.time()
-        with self.davy_jones_lock:
-            snapshot = list(self.davy_jones_locker)
+        with self.fallback_queue_lock:
+            snapshot = list(self.fallback_queue)
 
         for stashed in snapshot:
             if stashed.next_try_at is not None and now < stashed.next_try_at:
@@ -333,9 +332,9 @@ class ClipUploader:
         if sent is not None:
             return True, sent.id
 
-        with self.davy_jones_lock:
+        with self.fallback_queue_lock:
             pending = name in self.stashed_by_name
-        # Predecessor is still being stashed, return false and wait    
+        # Predecessor is still being stashed, return false and wait
         if pending:
             return False, None
 
@@ -354,25 +353,25 @@ class ClipUploader:
                 self.task_history[stashed.filename] = SentClip(stashed.filename, res_id, time.time())
                 # Eagerly evict the predecessor (1:1 chain); TTL is the backstop.
                 self.task_history.pop(stashed.prev_filename, None)  # type: ignore[arg-type]
-            with self.davy_jones_lock:
+            with self.fallback_queue_lock:
                 self.stashed_by_name.pop(stashed.filename, None)
-                if stashed in self.davy_jones_locker:
-                    self.davy_jones_locker.remove(stashed)
+                if stashed in self.fallback_queue:
+                    self.fallback_queue.remove(stashed)
             stashed.video_path.unlink(missing_ok=True)
             logger.info("Stashed clip resent and removed from disk: %s", stashed.filename)
 
         except Exception as e:
             logger.error(f"Failed to resend stashed clip '{stashed.filename}': {e}", exc_info=True)
-            stashed.next_try_at = time.time() + DAVY_JONES_RETRY_WAIT
+            stashed.next_try_at = time.time() + FALLBACK_QUEUE_RETRY_WAIT
 
     def _purge_expired_stashed(self) -> None:
         """Permanently remove clips older than STASH_TTL (from disk and registries)."""
         now = time.time()
         expired: list[StashedClip] = []
-        with self.davy_jones_lock:
-            for stashed in list(self.davy_jones_locker):
+        with self.fallback_queue_lock:
+            for stashed in list(self.fallback_queue):
                 if now - stashed.stashed_at > STASH_TTL:
-                    self.davy_jones_locker.remove(stashed)
+                    self.fallback_queue.remove(stashed)
                     self.stashed_by_name.pop(stashed.filename, None)
                     expired.append(stashed)
         for stashed in expired:
@@ -397,19 +396,6 @@ class ClipUploader:
         )
 
         with self.upload_lock:
-            if dependency_filename is not None:
-                # Szukamy bezpośrednio w rejestrze historii po nazwie pliku
-                dependency = self.task_history.get(dependency_filename)
-        
-            task = UploadTask(
-                clip=clip,
-                filename=filename,
-                details=details,
-                state=RecState.AWAIT_UPLOAD,
-                dependency=dependency
-            )
-        
-            # Dodajemy zadanie do aktywnej kolejki i do rejestru historycznego
             self.upload_queue.append(task)
             self.live_by_name[filename] = task
 
@@ -443,7 +429,7 @@ class ClipUploader:
             prev_id: str | None,
     ) -> str:
         """Send encoded MP4 bytes to the backend and return the assigned id.
-        Shared by the main-queue upload and davy jones resends."""
+        Shared by the main-queue upload and fallback queue resends."""
         data = {
             "video-name": filename,
             # Detection vector name = filename without the "_DATE_TIME" suffix
