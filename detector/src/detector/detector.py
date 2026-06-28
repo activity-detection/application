@@ -16,7 +16,7 @@ from src.detector import logger
 
 
 POSE_CONF = 0.3
-POSE_IMGSZ = 1280 # change for quality of detection in realtion to original stream size
+POSE_IMGSZ = 1600 # change for quality of detection in realtion to original stream size
 STALE_TRACK_FRAMES = 5  # >tyle klatek bez detekcji -> wyzeruj historię tracku
 
 

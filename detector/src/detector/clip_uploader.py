@@ -432,7 +432,9 @@ class ClipUploader:
         Shared by the main-queue upload and davy jones resends."""
         data = {
             "video-name": filename,
-            "description": "DESCRIPTION",
+            # Detection vector name = filename without the "_DATE_TIME" suffix
+            # added by ClipManager (e.g. "8 osób_20260623_085526.mp4" -> "8 osób").
+            "description": Path(filename).stem.rsplit("_", 2)[0],
             "relative-path": filename,
         }
         if prev_id:
