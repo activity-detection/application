@@ -14,6 +14,7 @@ from src.detector.clip_saver import ClipSaver
 from src.detector.vectors import FrameVector
 from src.detector.config import Config
 from src.detector import logger
+from src.detector.anonymizer import Anonymizer
 
 
 PAUSE_ON_ERROR = 1.0
@@ -396,6 +397,19 @@ class ClipUploader:
         )
 
         with self.upload_lock:
+            if dependency_filename is not None:
+                # Szukamy bezpośrednio w rejestrze historii po nazwie pliku
+                dependency = self.task_history.get(dependency_filename)
+        
+            task = UploadTask(
+                clip=clip,
+                filename=filename,
+                details=details,
+                state=RecState.AWAIT_UPLOAD,
+                dependency=dependency
+            )
+        
+            # Dodajemy zadanie do aktywnej kolejki i do rejestru historycznego
             self.upload_queue.append(task)
             self.live_by_name[filename] = task
 

@@ -71,14 +71,14 @@ services:
     build:
       context: detector
       dockerfile: Dockerfile
-    env_file: "detector/.env"
+    env_file: "detector/.env.dev"
     environment:
       - CLIP_FOLDER=/clips
       - BACKEND_UPLOAD_URL=http://backend:8080/videos/upload
       - ACTION_VECTORS_PATH=/app/vectors/vectors2.csv
       - BACKEND_CONFIG_URL=http://backend:8080/detector/config
       - UPLOAD_CLIPS=True
-      - SAVE_CLIPS=False
+      - SAVE_CLIPS=True
     volumes:
       - type: bind
         source: detector/clips
@@ -86,10 +86,6 @@ services:
       - type: bind
         source: detector/vectors
         target: /app/vectors
-        read_only: true
-      - type: bind
-        source: detector/examples
-        target: /app/examples
         read_only: true
       - type: bind
         source: detector/data
