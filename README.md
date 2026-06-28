@@ -13,15 +13,19 @@ Below is a brief explanation of the Docker environments used in the project.
 - dev (development)
   - Purpose: fast development with hot-reload, mapping host code into the container, and debugging.
   - Run (example): `docker-compose -f docker-compose.dev.yml up --build`.
-  - Notes: unoptimized images; uses volumes and development tools.
+  - Notes: unoptimized images; uses volumes and development tools. Saves clips in detector/clips folder.
 
 - prod (production)
   - Purpose: images optimized for deployment.
-  - Build (example): `docker-compose -f docker-compose.prod.yml up --build`.
+  - Build (example): `docker-compose -f docker-compose.yml up --build`.
 
-- test (tests)
-  - Purpose: run tests and CI validation in an isolated environment.
-  - Run (example): `docker compose -f docker-compose.test.yml up --build`
+## How to begin
+
+After cloning repository you need to copy file `detector/.env.example` to `detector/.env`. Populate it with correct data. After that start application using Docker Compose file.
+
+If using `MODE=VIDEO` you can select video using SOURCE_PATH variable. (Only dev)
+
+If using `MODE=RTSP` you need to populate RTSP related variables.
 
 ## Modules
 
